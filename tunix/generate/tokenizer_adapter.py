@@ -19,10 +19,6 @@ import inspect
 from typing import Any
 
 import numpy as np
-<<<<<<< HEAD
-
-=======
->>>>>>> 100dea3 (Begin integrating image inputs support in DPOTrainer)
 import sentencepiece as spm
 import transformers
 from etils import epath
