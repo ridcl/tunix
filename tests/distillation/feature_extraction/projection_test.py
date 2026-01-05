@@ -14,14 +14,12 @@
 
 """Unit tests for wrapping models with feature projection."""
 
-from absl.testing import absltest
-from absl.testing import parameterized
-from flax import nnx
 import jax
 import jax.numpy as jnp
 import numpy.testing as npt
-from tunix.distillation.feature_extraction import projection
-from tunix.distillation.feature_extraction import sowed_module
+from absl.testing import absltest, parameterized
+from flax import nnx
+from tunix.distillation.feature_extraction import projection, sowed_module
 
 
 class DummyModel(nnx.Module):

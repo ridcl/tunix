@@ -1,10 +1,10 @@
 """Unit tests for `progress_bar`."""
 
-from absl.testing import absltest
-import numpy as np
-from tunix.sft import metrics_logger
-from tunix.sft import progress_bar
 import tempfile
+
+import numpy as np
+from absl.testing import absltest
+from tunix.sft import metrics_logger, progress_bar
 
 
 class ProgressBarTest(absltest.TestCase):

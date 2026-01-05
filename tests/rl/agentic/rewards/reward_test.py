@@ -13,9 +13,7 @@
 # limitations under the License.
 
 from absl.testing import parameterized
-
-from tunix.rl.agentic.rewards import reward
-from tunix.rl.agentic.rewards import reward_types
+from tunix.rl.agentic.rewards import reward, reward_types
 
 
 class RewardTest(parameterized.TestCase):

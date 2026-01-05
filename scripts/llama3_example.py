@@ -17,14 +17,12 @@
 import os
 import tempfile
 
-from flax import nnx
 import jax
 import transformers
+from flax import nnx
 from tunix.generate import sampler
-from tunix.models.llama3 import model
-from tunix.models.llama3 import params
+from tunix.models.llama3 import model, params
 from tunix.tests import test_common as tc
-
 
 MODEL_VERSION = "meta-llama/Llama-3.2-1B-Instruct"
 

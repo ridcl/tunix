@@ -15,17 +15,16 @@
 """Disttillation trainer unittest."""
 
 import os
-from absl.testing import absltest
-from flax import nnx
+
 import jax
 import jax.numpy as jnp
 import jax.sharding as shd
 import numpy as np
 import optax
-from tunix.distillation import distillation_trainer
-from tunix.distillation import strategies
+from absl.testing import absltest
+from flax import nnx
+from tunix.distillation import distillation_trainer, strategies
 from tunix.tests import test_common as tc
-
 
 os.environ['XLA_FLAGS'] = '--xla_force_host_platform_device_count=4'
 _VOCAB_SIZE = 256

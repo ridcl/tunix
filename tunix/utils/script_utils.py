@@ -1,12 +1,12 @@
 """Utilities for tunix scripts."""
 
-from collections.abc import Callable
 import json
 import logging
 import os
-from absl import logging as absl_logging
-import grain
+from collections.abc import Callable
 
+import grain
+from absl import logging as absl_logging
 
 DEBUG_LEVELS = {
     'DEBUG': absl_logging.DEBUG,
@@ -18,8 +18,10 @@ DEBUG_LEVELS = {
 
 try:
   # This is a g3-only import.
-  from GOOGLE_INTERNAL_PACKAGE_PATH.perftools.accelerators.xprof.api.python import xprof_session  # pytype: disable=import-error
-  from GOOGLE_INTERNAL_PACKAGE_PATH.pyglib import gfile  # pytype: disable=import-error
+  from GOOGLE_INTERNAL_PACKAGE_PATH.perftools.accelerators.xprof.api.python import \
+      xprof_session  # pytype: disable=import-error
+  from GOOGLE_INTERNAL_PACKAGE_PATH.pyglib import \
+      gfile  # pytype: disable=import-error
 
   ENV = 'g3'
 except ImportError:
@@ -28,8 +30,8 @@ except ImportError:
   ENV = 'oss'
 
 if ENV == 'oss':
-  import tensorflow_datasets as tfds
   import fsspec
+  import tensorflow_datasets as tfds
 
 
 def get_dataset(

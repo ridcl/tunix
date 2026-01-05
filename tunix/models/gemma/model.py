@@ -14,22 +14,20 @@
 
 """Gemma transformer."""
 
-from collections.abc import Iterable
 import dataclasses
 import enum
+from collections.abc import Iterable
 from typing import Any, Callable, Tuple
 
 import flax
-from flax import nnx
 import jax
-from jax import numpy as jnp
-from jax.interpreters import pxla
 import jax.sharding as shd
 import jaxtyping
+from flax import nnx
+from jax import numpy as jnp
+from jax.interpreters import pxla
 from tunix.models.gemma import params as params_lib
-from tunix.utils import compat
-from tunix.utils import env_utils
-
+from tunix.utils import compat, env_utils
 
 LayerCache = dict[str, jaxtyping.Array]
 Cache = dict[str, LayerCache]

@@ -15,6 +15,6 @@
 
 # pylint: disable=g-importing-member
 
-from tunix.distillation.distillation_trainer import DistillationTrainer
-from tunix.distillation.distillation_trainer import TrainingConfig
-from tunix.distillation.distillation_trainer import TrainingInput
+from tunix.distillation.distillation_trainer import (DistillationTrainer,
+                                                     TrainingConfig,
+                                                     TrainingInput)

@@ -7,13 +7,13 @@ HF PyTorch model, typically we will expect the logits differnece to be within
 
 import os
 import tempfile
-from absl.testing import absltest
-from absl.testing import parameterized
+
 import jax
 import jax.numpy as jnp
 import numpy as np
 import torch
 import transformers
+from absl.testing import absltest, parameterized
 from tunix.models.qwen2 import model as qwen2_model
 from tunix.models.qwen2 import params as qwen2_params
 from tunix.models.qwen3 import model as qwen3_model

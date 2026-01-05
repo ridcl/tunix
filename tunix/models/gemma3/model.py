@@ -20,15 +20,13 @@ import itertools
 from typing import Tuple
 
 import flax
-from flax import nnx
 import jax
-from jax import numpy as jnp
-from jax.interpreters import pxla
 import jax.sharding as shd
 import jaxtyping
-from tunix.utils import compat
-from tunix.utils import env_utils
-
+from flax import nnx
+from jax import numpy as jnp
+from jax.interpreters import pxla
+from tunix.utils import compat, env_utils
 
 env_utils.setup_sharding_environment()
 
@@ -913,14 +911,14 @@ class MultimodalProjector(nnx.Module):
 
   @jax.named_scope('multimodal_projector')
   def __call__(self, x: jaxtyping.Array) -> jaxtyping.Array:
-    B, _, D = x.shape
-    x = x.reshape(B, self.patches_per_side, self.patches_per_side, D)
+    *B, _, D = x.shape
+    x = x.reshape(*B, self.patches_per_side, self.patches_per_side, D)
     x = nnx.avg_pool(
         x,
         window_shape=(self.kernel_size, self.kernel_size),
         strides=(self.kernel_size, self.kernel_size),
     )
-    x = x.reshape(B, self.output_tokens_total, D)
+    x = x.reshape(*B, self.output_tokens_total, D)
     x = self.mm_soft_emb_norm(x)
     x = self.mm_input_projection(x)
     return x
@@ -933,7 +931,8 @@ class Gemma3(nnx.Module, pytree=False):
     self.config = config
 
     if config.multimodal:
-      from tunix.models.siglip.model import SigLIPConfig, SigLIPEngine  # pylint: disable=g-import-not-at-top
+      from tunix.models.siglip.model import (  # pylint: disable=g-import-not-at-top
+          SigLIPConfig, SigLIPEngine)
 
       self.siglip = SigLIPEngine(
           cfg=SigLIPConfig(
@@ -1036,18 +1035,32 @@ class Gemma3(nnx.Module, pytree=False):
       assert pixel_values is not None
       image_mask = last_tokens == 262144  # 262144: <image_soft_token>
 
-      vision_outputs = self.siglip(pixel_values)  # B, 4096, 1152
-      image_features = self.projector(vision_outputs)  # B, 256, embed_dim
+      vision_outputs = self.siglip(pixel_values)  # *B, 4096, 1152
+      image_features = self.projector(vision_outputs)  # *B, 256, embed_dim
 
       last_tokens = jnp.where(image_mask, 0, last_tokens)
       x = self.embedder.encode(last_tokens)
       image_features = image_features.astype(x.dtype)
 
       # Write image features to embedded input
-      idx = jnp.cumsum(image_mask, axis=1) - 1
-      idx = jnp.where(image_mask, idx, 0)
-      gathered = jnp.take_along_axis(image_features, idx[..., None], axis=1)
+      token_count = jnp.cumsum(image_mask, axis=-1) - 1  # [B, seq_len]
+      image_idx = token_count // 256  # Which image (N dimension)
+      feature_idx = token_count % 256  # Which feature within that image
+
+      image_idx = jnp.where(image_mask, image_idx, -1)
+      feature_idx = jnp.where(image_mask, feature_idx, -1)
+
+      # Gather from [B, N, 256, embed_dim]
+      batch_indices = jnp.arange(image_features.shape[0])[:, None]
+      gathered = image_features[batch_indices, image_idx, feature_idx]  # [B, seq_len, embed_dim]
+
       x = jnp.where(image_mask[..., None], gathered, x)
+      # idx = jnp.cumsum(image_mask, axis=-1) - 1  # *B, seq_len
+      # idx = jnp.where(image_mask, idx, 0)  # *B, seq_len
+      # idx = idx[..., None]  # *B, seq_len, 1
+      # idx = jnp.broadcast_to(idx, x.shape)  # *B, seq_len, embed_dim
+      # gathered = jnp.take_along_axis(image_features, idx, axis=-2)
+      # x = jnp.where(image_mask[..., None], gathered, x)
 
     else:
       x = self.embedder.encode(last_tokens)

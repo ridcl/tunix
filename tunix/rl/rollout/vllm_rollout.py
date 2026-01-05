@@ -16,11 +16,10 @@
 
 from typing import Any, Dict, Optional, Tuple
 
-from flax import nnx
 import jax
 import jaxtyping
-from tunix.generate import mappings
-from tunix.generate import vllm_sampler
+from flax import nnx
+from tunix.generate import mappings, vllm_sampler
 from tunix.rl.rollout import base_rollout
 
 

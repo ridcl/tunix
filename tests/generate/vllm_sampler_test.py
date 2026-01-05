@@ -22,12 +22,13 @@ import tempfile
 import threading
 import time
 from unittest import mock
-from absl.testing import absltest
-from flax import nnx
+
 import jax
 import numpy as np
 import qwix
 import transformers
+from absl.testing import absltest
+from flax import nnx
 from tunix.generate import mappings
 from tunix.generate import sampler as vanilla_sampler
 from tunix.generate import vllm_sampler
@@ -37,7 +38,6 @@ from tunix.sft import utils as base_utils
 from tunix.tests import test_common as tc
 from vllm.inputs import TokensPrompt
 from vllm.sampling_params import SamplingParams
-import asyncio
 
 os.environ["SKIP_JAX_PRECOMPILE"] = "1"
 

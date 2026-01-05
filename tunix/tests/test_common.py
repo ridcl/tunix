@@ -14,24 +14,23 @@
 
 """Common test utilities."""
 
-from collections.abc import Iterable
 import dataclasses
 import gc
 import os
 import shutil
 import sys
+from collections.abc import Iterable
 from typing import Any, List, Tuple
 
-from flax import nnx
 import huggingface_hub
 import jax
 import jax.numpy as jnp
 import numpy as np
 import qwix
+import sentencepiece as spm
+from flax import nnx
 from tunix.rl import reshard
 from tunix.utils import env_utils
-
-import sentencepiece as spm
 
 env_utils.setup_sharding_environment()
 

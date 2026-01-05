@@ -14,9 +14,9 @@
 
 """Inference worker for RL."""
 
-from flax import nnx
 import jax
 import jaxtyping
+from flax import nnx
 from tunix.rl import common
 
 

@@ -16,10 +16,10 @@
 
 from typing import Callable
 
-from flax import nnx
 import jax
 import jax.numpy as jnp
 import optax
+from flax import nnx
 from tunix.distillation import feature_extraction
 from tunix.distillation.strategies import base_strategy
 from typing_extensions import override

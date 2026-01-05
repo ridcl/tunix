@@ -14,12 +14,11 @@
 
 """Tests for attention transfer strategy."""
 
-from absl.testing import absltest
-from absl.testing import parameterized
-from flax import nnx
 import jax
 import jax.numpy as jnp
 import numpy.testing as npt
+from absl.testing import absltest, parameterized
+from flax import nnx
 from tunix.distillation.strategies import attention
 
 jax.config.update("jax_threefry_partitionable", False)

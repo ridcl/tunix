@@ -17,8 +17,8 @@
 import abc
 from typing import Any, Callable, Protocol, TypeVar
 
-from flax import nnx
 import jax
+from flax import nnx
 
 ABC = abc.ABC
 abstractmethod = abc.abstractmethod

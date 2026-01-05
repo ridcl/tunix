@@ -9,11 +9,11 @@ import json
 import re
 from typing import Any, Dict, Tuple
 
-from etils import epath
-from flax import nnx
 import jax
 import jax.numpy as jnp
 import safetensors.numpy as stnp  # or safetensors.flax if you prefer
+from etils import epath
+from flax import nnx
 from tunix.models.siglip import model as model_lib
 
 

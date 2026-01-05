@@ -20,13 +20,12 @@ import dataclasses
 from typing import Generic, Iterable, List, Sequence
 
 import flax
-from flax import nnx
 import jax
 import jax.numpy as jnp
 import numpy as np
+from flax import nnx
 from tunix.rl import algorithm_config as algo_config_lib
-from tunix.rl import common
-from tunix.rl import function_registry
+from tunix.rl import common, function_registry
 from tunix.rl import rl_cluster as rl_cluster_lib
 from tunix.rl import rl_learner
 from tunix.rl.ppo import ppo_helpers

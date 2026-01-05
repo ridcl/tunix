@@ -19,15 +19,14 @@ import enum
 from typing import Tuple
 
 import flax
-from flax import nnx
 import jax
-from jax import numpy as jnp
-from jax.interpreters import pxla
 import jax.sharding as shd
 import jaxtyping
+from flax import nnx
+from jax import numpy as jnp
+from jax.interpreters import pxla
 from tunix.generate.mappings import BackendMappingMixin
-from tunix.utils import compat
-from tunix.utils import env_utils
+from tunix.utils import compat, env_utils
 
 env_utils.setup_sharding_environment()
 

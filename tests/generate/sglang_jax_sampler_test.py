@@ -16,16 +16,17 @@ import os
 import re
 import tempfile
 
-from absl.testing import absltest
-from flax import nnx
 import huggingface_hub
 import jax
 import jax.numpy as jnp
 import numpy as np
 import qwix
 import transformers
+from absl.testing import absltest
+from flax import nnx
+from tunix.generate import mappings
 from tunix.generate import sampler as vanilla_sampler
-from tunix.generate import sglang_jax_sampler, mappings
+from tunix.generate import sglang_jax_sampler
 from tunix.models.llama3 import model as llama_lib
 from tunix.models.llama3 import params as llama_params
 from tunix.sft import utils as base_utils

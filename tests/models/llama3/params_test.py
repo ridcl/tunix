@@ -32,13 +32,11 @@
 
 import unittest
 
+import jax
 from absl.testing import absltest
 from flax import nnx
 from huggingface_hub import snapshot_download
-import jax
-from tunix.models.llama3 import model
-from tunix.models.llama3 import params
-
+from tunix.models.llama3 import model, params
 
 # --- Model Download Section ---
 print("Downloading Llama-3.2-1B model from Hugging Face...")

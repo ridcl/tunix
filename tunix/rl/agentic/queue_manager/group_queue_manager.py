@@ -15,11 +15,13 @@
 """Manages queues of trajectory items, grouping them by group_id and episode_id."""
 
 from __future__ import annotations
+
 import asyncio
 import collections
-from collections.abc import Hashable
 import dataclasses
+from collections.abc import Hashable
 from typing import Deque, Dict, List, Optional, Tuple
+
 from tunix.rl.agentic.agents import agent_types
 
 Trajectory = agent_types.Trajectory

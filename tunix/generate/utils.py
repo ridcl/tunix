@@ -20,14 +20,15 @@ import gc
 import logging
 import math
 import re
-from typing import Any, Callable, Dict, Iterator, Iterable, List, Mapping, Optional, Tuple
+from typing import (Any, Callable, Dict, Iterable, Iterator, List, Mapping,
+                    Optional, Tuple)
 
-from flax import nnx
 import jax
-from jax import lax
 import jax.image as jimg
 import jax.numpy as jnp
 import numpy as np
+from flax import nnx
+from jax import lax
 
 
 def compute_attention_masks(

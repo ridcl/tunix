@@ -35,13 +35,13 @@ import os
 import shutil
 import tempfile
 
-from absl.testing import absltest
-from flax import nnx
 import jax
 import jax.numpy as jnp
 import numpy as np
 import qwix
 import safetensors.numpy as safe_np
+from absl.testing import absltest
+from flax import nnx
 from tunix.models import dummy_model_creator
 
 create_dummy_model = dummy_model_creator.create_dummy_model

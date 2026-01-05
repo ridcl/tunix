@@ -18,18 +18,19 @@ from __future__ import annotations
 
 import abc
 import asyncio
-from concurrent import futures
 import contextlib
 import dataclasses
 import itertools
-from typing import Any, Callable, Coroutine, Dict, Generic, Iterable, Iterator, List, Sequence, TypeVar
+from concurrent import futures
+from typing import (Any, Callable, Coroutine, Dict, Generic, Iterable,
+                    Iterator, List, Sequence, TypeVar)
 
-from absl import logging
 import flax
 import jax
 import jax.numpy as jnp
-from jax.typing import ArrayLike
 import numpy as np
+from absl import logging
+from jax.typing import ArrayLike
 from tunix.rl import algorithm_config as algo_config_lib
 from tunix.rl import common
 from tunix.rl import rl_cluster as rl_cluster_lib

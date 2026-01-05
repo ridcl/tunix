@@ -29,17 +29,17 @@ import os
 import pprint
 import re
 
-from absl import logging
-from flax import nnx
 import fsspec
 import grain
 import jax
-from jax._src import mesh_utils
 import optax
-from orbax import checkpoint as ocp
 import qwix
-from tqdm.auto import tqdm
 import transformers
+from absl import logging
+from flax import nnx
+from jax._src import mesh_utils
+from orbax import checkpoint as ocp
+from tqdm.auto import tqdm
 from tunix.cli.utils import data as data_lib
 from tunix.examples.data import math_dataset
 from tunix.models.llama3 import model as llama_lib
@@ -49,9 +49,7 @@ from tunix.models.qwen2 import params as qwen2_params
 from tunix.rl import rl_cluster as rl_cluster_lib
 from tunix.rl.grpo import grpo_learner
 from tunix.rl.rollout import base_rollout
-from tunix.sft import metrics_logger
-from tunix.sft import profiler
-from tunix.sft import utils
+from tunix.sft import metrics_logger, profiler, utils
 from tunix.tests import test_common as tc
 from tunix.utils import script_utils
 

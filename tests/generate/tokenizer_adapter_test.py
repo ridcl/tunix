@@ -14,10 +14,9 @@
 
 #
 
-from absl.testing import absltest
 import transformers
+from absl.testing import absltest
 from tunix.generate import tokenizer_adapter as adapter
-
 
 AutoTokenizer = transformers.AutoTokenizer
 

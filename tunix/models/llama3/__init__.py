@@ -14,10 +14,8 @@
 
 """Llama3 API."""
 
-from tunix.models.llama3 import mapping_sglang_jax
-from tunix.models.llama3 import mapping_vllm_jax
-from tunix.models.llama3 import model
-from tunix.models.llama3 import params
+from tunix.models.llama3 import (mapping_sglang_jax, mapping_vllm_jax, model,
+                                 params)
 
 BACKEND_MAPPINGS = {
     'vllm_jax': mapping_vllm_jax.VLLM_JAX_MAPPING,

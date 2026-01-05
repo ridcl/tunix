@@ -14,8 +14,9 @@
 
 """Math utils for evaluating on Math Dataset like Math500 and AIME2024."""
 import re
-from pylatexenc import latex2text
+
 import sympy
+from pylatexenc import latex2text
 from sympy.parsing import sympy_parser
 
 

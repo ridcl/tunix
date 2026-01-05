@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import tempfile
-from absl.testing import absltest
-from absl.testing import parameterized
+
 import jax
 import numpy as np
+from absl.testing import absltest, parameterized
 from tunix.cli.utils import model
 
 

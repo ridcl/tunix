@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import os
-from absl.testing import absltest
-from absl.testing import parameterized
+
 import jax
 import jax.numpy as jnp
 import jax.sharding as shd
 import numpy as np
+from absl.testing import absltest, parameterized
 from tunix.sft import sharding_utils
 
 # CPU environment setup to simulate multi device env.

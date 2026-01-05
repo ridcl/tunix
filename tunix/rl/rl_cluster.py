@@ -26,18 +26,17 @@ import operator
 import os
 from typing import Any, Callable
 
-from absl import logging
 import flax
-from flax import nnx
-from flax.linen import partitioning as nn_partitioning
-from flax.nnx import filterlib
-from flax.nnx import statelib
 import jax
 import jax.numpy as jnp
-from jax.sharding import Mesh  # pylint: disable=g-importing-member
 import jaxtyping
 import numpy as np
 import optax
+from absl import logging
+from flax import nnx
+from flax.linen import partitioning as nn_partitioning
+from flax.nnx import filterlib, statelib
+from jax.sharding import Mesh  # pylint: disable=g-importing-member
 # Internal placeholder for sglang_jax rollout worker stub, don't change this line.
 # Internal placeholder for vllm rollout worker stub, don't change this line.
 from tunix.perf import metrics as perf_metrics
@@ -46,11 +45,8 @@ from tunix.rl import reshard
 from tunix.rl import trainer as rl_trainer
 from tunix.rl import utils as rl_utils
 from tunix.rl.inference import inference_worker
-from tunix.rl.rollout import base_rollout
-from tunix.rl.rollout import vanilla_rollout
-from tunix.sft import metrics_logger
-from tunix.sft import peft_trainer
-from tunix.sft import sharding_utils
+from tunix.rl.rollout import base_rollout, vanilla_rollout
+from tunix.sft import metrics_logger, peft_trainer, sharding_utils
 from tunix.sft import utils as sft_utils
 
 ModelOrPath = nnx.Module | str

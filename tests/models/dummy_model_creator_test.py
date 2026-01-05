@@ -1,10 +1,9 @@
 import unittest
 
-from absl.testing import absltest
-from flax import nnx
 import jax
 import jax.numpy as jnp
-
+from absl.testing import absltest
+from flax import nnx
 from tunix.models.dummy_model_creator import create_dummy_model
 from tunix.models.llama3 import model as llama3_model
 from tunix.models.qwen3 import model as qwen3_model

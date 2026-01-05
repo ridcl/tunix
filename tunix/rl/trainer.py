@@ -16,13 +16,14 @@
 
 from typing import Any, Callable, Optional
 
+import optax
 from flax import nnx
 from jax.typing import ArrayLike  # pylint: disable=g-importing-member
-import optax
-from tunix.sft import peft_trainer
-from typing_extensions import override
 from tunix.perf import trace as perf_trace
-from tunix.sft.metrics_logger import MetricsLogger  # pylint: disable=unused-import
+from tunix.sft import peft_trainer
+from tunix.sft.metrics_logger import \
+    MetricsLogger  # pylint: disable=unused-import
+from typing_extensions import override
 
 
 class Trainer(peft_trainer.PeftTrainer):

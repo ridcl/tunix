@@ -16,25 +16,22 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 import dataclasses
-from typing import Any, Optional
 import warnings
+from collections.abc import Sequence
+from typing import Any, Optional
 
-from absl import logging
 import flax
-from flax import nnx
-from flax.nnx import filterlib
-from flax.nnx import graph
-from flax.nnx import statelib
 import jax
 import jax.numpy as jnp
 import jaxtyping
 import numpy as np
-from tunix.generate import base_sampler
-from tunix.generate import utils
 import tunix.generate.beam_search as beam_search_lib
 import tunix.generate.tokenizer_adapter as tok_adapter
+from absl import logging
+from flax import nnx
+from flax.nnx import filterlib, graph, statelib
+from tunix.generate import base_sampler, utils
 
 LayerCache = dict[str, jaxtyping.Array]
 Cache = dict[str, LayerCache]

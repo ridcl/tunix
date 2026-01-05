@@ -17,17 +17,17 @@
 from __future__ import annotations
 
 import abc
-from concurrent import futures
 import itertools
 import math
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Sequence
-from typing import Generic, TypeVar
+from concurrent import futures
+from typing import (Any, Callable, Dict, Generic, Iterable, Iterator, List,
+                    Sequence, TypeVar)
 
-from absl import logging
 import jax
 import jax.numpy as jnp
-from jax.typing import ArrayLike  # pylint: disable=g-importing-member
 import numpy as np
+from absl import logging
+from jax.typing import ArrayLike  # pylint: disable=g-importing-member
 from tunix.rl import algorithm_config as algo_config_lib
 from tunix.rl import common
 from tunix.rl import rl_cluster as rl_cluster_lib

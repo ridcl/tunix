@@ -18,10 +18,10 @@ import os
 import time
 from typing import Any, Tuple
 
-from absl import logging
-from flax import nnx
 import jax
 import orbax.checkpoint as ocp
+from absl import logging
+from flax import nnx
 
 _DEFAULT_CHECKPOINTING_OPTIONS = ocp.CheckpointManagerOptions(
     save_decision_policy=ocp.checkpoint_managers.ContinuousCheckpointingPolicy(

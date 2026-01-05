@@ -7,8 +7,8 @@ import logging
 from typing import Callable
 
 import jax
-from metrax import logging as metrax_logging
 import numpy as np
+from metrax import logging as metrax_logging
 from tunix.utils import env_utils
 
 LoggingBackend = metrax_logging.LoggingBackend

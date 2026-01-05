@@ -15,11 +15,11 @@
 import logging
 from unittest import mock
 
-from absl.testing import absltest
-from flax import nnx
 import jax
 import jax.numpy as jnp
 import optax
+from absl.testing import absltest
+from flax import nnx
 from tunix.sft import system_metrics_calculator
 
 _PARAMS = 1_000_000_000

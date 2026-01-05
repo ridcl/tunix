@@ -19,8 +19,8 @@ These types provide standardized containers for actions, interaction steps,
 and complete episode trajectories.
 """
 
-from collections.abc import Hashable
 import dataclasses
+from collections.abc import Hashable
 from typing import Any, Dict, Optional
 
 field = dataclasses.field

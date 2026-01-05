@@ -14,9 +14,8 @@
 
 """Registry for different tool parsers."""
 
-from tunix.rl.agentic.parser.tool_parser import gemini_parser
-from tunix.rl.agentic.parser.tool_parser import qwen_parser
-from tunix.rl.agentic.parser.tool_parser import tool_parser_base
+from tunix.rl.agentic.parser.tool_parser import (gemini_parser, qwen_parser,
+                                                 tool_parser_base)
 
 ToolParser = tool_parser_base.ToolParser
 QwenToolParser = qwen_parser.QwenToolParser

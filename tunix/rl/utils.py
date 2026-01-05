@@ -14,19 +14,18 @@
 
 """Simple utils used by RL algorithms."""
 
-from itertools import chain  # pylint: disable=g-importing-member
 import operator
+from itertools import chain  # pylint: disable=g-importing-member
 from typing import Any, List, Optional
 
-from absl import logging
-from flax import nnx
-from flax.nnx import filterlib
-from flax.nnx import statelib
 import jax
-from jax import tree_util
 import jax.numpy as jnp
 import jaxtyping
 import numpy as np
+from absl import logging
+from flax import nnx
+from flax.nnx import filterlib, statelib
+from jax import tree_util
 
 Mesh = jax.sharding.Mesh
 NamedSharding = jax.sharding.NamedSharding

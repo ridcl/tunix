@@ -1,10 +1,10 @@
 """Tests for tunix.generate.mappings.MappingConfig utilities."""
 
 from absl.testing import absltest
-
+from flax import nnx
 from tunix.generate import mappings
 from tunix.models.llama3 import model as model_lib
-from flax import nnx
+
 
 class MappingConfigTest(absltest.TestCase):
 

@@ -17,20 +17,17 @@ import functools
 import os
 from typing import Any, Tuple
 from unittest import mock
-from absl.testing import absltest
-from absl.testing import parameterized
+
 import chex
-from flax import nnx
 import jax
 import jax.numpy as jnp
 import jax.sharding as shd
 import numpy as np
 import optax
 import orbax.checkpoint as ocp
-from tunix.sft import checkpoint_manager
-from tunix.sft import hooks
-from tunix.sft import peft_trainer
-from tunix.sft import profiler
+from absl.testing import absltest, parameterized
+from flax import nnx
+from tunix.sft import checkpoint_manager, hooks, peft_trainer, profiler
 from tunix.tests import test_common as tc
 from tunix.utils import compat
 

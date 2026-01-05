@@ -16,11 +16,11 @@
 from typing import Any, Iterable
 
 import flax
-from flax import nnx
 import jax
-from jax import numpy as jnp
 import jax.tree_util as jtu
 import numpy as np
+from flax import nnx
+from jax import numpy as jnp
 from tunix.sft import utils
 
 make_causal_attn_mask = utils.make_causal_attn_mask

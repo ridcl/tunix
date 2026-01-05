@@ -7,16 +7,14 @@ import functools
 import json
 import os
 
-from flax import nnx
 import grain
 import jax
-from jax import numpy as jnp
 import optax
 import qwix
-from tqdm.auto import tqdm
-
-import optax
+from flax import nnx
+from jax import numpy as jnp
 from orbax import checkpoint as ocp
+from tqdm.auto import tqdm
 
 try:
   from etils import ecolab
@@ -31,24 +29,23 @@ except:
   cm = contextlib.nullcontext()
 
 with cm:
-  from tunix.models.qwen2 import params as params_lib
-  from tunix.models.qwen2 import model as model_lib
-  from tunix.generate import sampler as sampler_lib
-  from tunix.sft import metrics_logger
-  from tunix.rl.agentic.agents import model_agent
-  from tunix.rl.agentic.environments import task_environment
-  from tunix.rl.agentic.rewards import reward
-  from tunix.rl.agentic.trajectory import trajectory_collect_engine
-  from tunix.rl.agentic.parser.chat_template_parser import parser
   import jax
   import numpy as np
-  from tunix.rl.experimental.agentic_grpo_learner import GRPOConfig, GRPOLearner
+  from tunix.generate import sampler as sampler_lib
+  from tunix.models.qwen2 import model as model_lib
+  from tunix.models.qwen2 import params as params_lib
   from tunix.rl import rl_cluster as rl_cluster_lib
+  from tunix.rl.agentic.agents import model_agent
+  from tunix.rl.agentic.environments import task_environment
+  from tunix.rl.agentic.parser.chat_template_parser import parser
+  from tunix.rl.agentic.rewards import reward
+  from tunix.rl.agentic.trajectory import trajectory_collect_engine
+  from tunix.rl.experimental.agentic_grpo_learner import (GRPOConfig,
+                                                          GRPOLearner)
   from tunix.rl.rollout import base_rollout
   from tunix.sft import metrics_logger
   from tunix.sft import utils as sft_utils
-  from tunix.utils import math_rewards
-  from tunix.utils import compat
+  from tunix.utils import compat, math_rewards
 
 # %%
 # ====== Data ======
@@ -147,9 +144,8 @@ try:
 except Exception:
   NOTEBOOK_ENV = "git"
 
-  from google.cloud import storage
-
   import fsspec
+  from google.cloud import storage
 
   file_open = fsspec.open
 
@@ -171,9 +167,9 @@ MODEL_PATH = os.path.join(MODEL_PATH_PREFIX, "DeepSeek-R1-Distill-Qwen-1.5B")
 # %%
 show_hbm_usage = sft_utils.show_hbm_usage
 
+import datasets as datasets_lib
 # %%
 import pandas as pd
-import datasets as datasets_lib
 import transformers
 
 Dataset = datasets_lib.Dataset

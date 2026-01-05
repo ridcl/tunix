@@ -17,12 +17,11 @@ import dataclasses
 from typing import Any, Callable, Tuple
 
 import flax
+import optax
 from flax import nnx
 from jax.typing import ArrayLike  # pylint: disable=g-importing-member
-import optax
 from tunix.distillation import strategies
-from tunix.sft import metrics_logger
-from tunix.sft import peft_trainer
+from tunix.sft import metrics_logger, peft_trainer
 from typing_extensions import override
 
 

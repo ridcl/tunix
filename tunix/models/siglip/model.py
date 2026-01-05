@@ -5,12 +5,12 @@ from __future__ import annotations
 import dataclasses
 from typing import Tuple
 
-from flax import nnx
 import jax
-from jax.interpreters import pxla
 import jax.numpy as jnp
 import jax.sharding as shd
 import jaxtyping
+from flax import nnx
+from jax.interpreters import pxla
 
 
 def shard(x: jnp.ndarray, s: Tuple[str | None, ...]):
@@ -120,8 +120,8 @@ class PatchEmbed(nnx.Module):
   def __call__(self, x: jaxtyping.Array) -> jaxtyping.Array:
     # x: [B,H,W,3] -> conv -> [B,H/P,W/P,D] -> [B,N,D]
     x = self.proj(x)
-    b, h, w, d = x.shape
-    x = x.reshape(b, h * w, d)
+    *b, h, w, d = x.shape
+    x = x.reshape(*b, h * w, d)
     x = shard(x, self.cfg.shd_config.act_bnd)
     return x
 
@@ -206,21 +206,21 @@ class MultiHeadSelfAttention(nnx.Module):
 
   @jax.named_scope("mhsa")
   def __call__(self, x: jaxtyping.Array) -> jaxtyping.Array:
-    b, n, d = x.shape
+    *b, n, d = x.shape
     h = self.cfg.num_heads
     dh = self.cfg.head_dim
 
-    q = self.q(x).reshape(b, n, h, dh)
-    k = self.k(x).reshape(b, n, h, dh)
-    v = self.v(x).reshape(b, n, h, dh)
+    q = self.q(x).reshape(*b, n, h, dh)
+    k = self.k(x).reshape(*b, n, h, dh)
+    v = self.v(x).reshape(*b, n, h, dh)
 
     q = shard(q, self.cfg.shd_config.act_bnhd)
     k = shard(k, self.cfg.shd_config.act_bnhd)
     v = shard(v, self.cfg.shd_config.act_bnhd)
 
-    attn = jnp.einsum("bnhd,bmhd->bhnm", q * self.scale, k)  # [B,H,N,N]
+    attn = jnp.einsum("*bnhd,*bmhd->*bhnm", q * self.scale, k)  # [B,H,N,N]
     attn = jax.nn.softmax(attn, axis=-1)
-    out = jnp.einsum("bhnm,bmhd->bnhd", attn, v).reshape(b, n, d)
+    out = jnp.einsum("*bhnm,*bmhd->*bnhd", attn, v).reshape(*b, n, d)
     out = self.o(out)
     out = shard(out, self.cfg.shd_config.act_bnd)
     return out
@@ -286,15 +286,16 @@ class SigLIPEngine(nnx.Module):
 
   @jax.named_scope("siglip_encoder")
   def __call__(self, images):
-    x = self.patch(images)  # [B, N, D]
-    b, n, d = x.shape
+    x = self.patch(images)  # [*B, N, D]
+    *b, n, d = x.shape
 
     if hasattr(self, "cls_token"):
-      cls = jnp.tile(self.cls_token.value, (b, 1, 1))
+      assert len(b) == 1  # TODO: figure out how cls_token should be treated with > 1 batch dim
+      cls = jnp.tile(self.cls_token.value, (*b, 1, 1))
       x = jnp.concatenate([cls, x], axis=1)
 
     if hasattr(self, "pos_embed"):
-      x = x + self.pos_embed.value[:, : x.shape[1], :]
+      x = x + self.pos_embed.value[..., : x.shape[-2], :]
 
     for blk in self.blocks:
       x = blk(x)

@@ -19,13 +19,11 @@ import functools
 import operator
 from typing import Any, Optional, Tuple
 
-from flax import nnx
 import jax
 import jaxtyping
+from flax import nnx
 from tunix.generate import sampler
-from tunix.rl import common
-from tunix.rl import reshard
-from tunix.rl import utils
+from tunix.rl import common, reshard, utils
 from tunix.rl.rollout import base_rollout
 
 

@@ -18,7 +18,8 @@ import threading
 from typing import Any, Optional
 
 import numpy as np
-from tunix.rl.agentic.parser.chat_template_parser import parser as chat_template_parser
+from tunix.rl.agentic.parser.chat_template_parser import \
+    parser as chat_template_parser
 
 
 def pad_prompt_and_completion(

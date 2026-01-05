@@ -16,22 +16,20 @@ import functools
 import os
 from unittest import mock
 
-from absl.testing import absltest
-from absl.testing import parameterized
 import chex
-from flax import nnx
-from flax.linen import partitioning as nn_partitioning
 import jax
-from jax import numpy as jnp
 import numpy as np
 import optax
+from absl.testing import absltest, parameterized
+from flax import nnx
+from flax.linen import partitioning as nn_partitioning
+from jax import numpy as jnp
 from transformers import tokenization_utils_base
 from tunix.generate import mappings
 from tunix.rl import rl_cluster as rl_cluster_lib
 from tunix.rl import utils
 from tunix.rl.rollout import base_rollout
 from tunix.tests import test_common as tc
-
 
 PreTrainedTokenizerBase = tokenization_utils_base.PreTrainedTokenizerBase
 os.environ['XLA_FLAGS'] = '--xla_force_host_platform_device_count=4'

@@ -16,10 +16,10 @@
 
 from typing import Any
 
-from flax import nnx
 import jax
 import jax.numpy as jnp
 import numpy as np
+from flax import nnx
 from tunix.distillation.feature_extraction import sowed_module
 
 

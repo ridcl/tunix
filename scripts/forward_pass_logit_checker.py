@@ -18,12 +18,11 @@ import argparse
 import os
 
 import jax
-from jax.experimental import multihost_utils
 import numpy as np
 import torch
 import torch.nn.functional as F
-from transformers import AutoModelForCausalLM
-from transformers import AutoTokenizer
+from jax.experimental import multihost_utils
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from tunix.generate import sampler as sampler_lib
 from tunix.models.gemma3 import model as gemma3_model_lib
 from tunix.models.gemma3 import params as gemma3_params_lib

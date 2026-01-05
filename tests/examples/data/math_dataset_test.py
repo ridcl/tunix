@@ -16,8 +16,7 @@
 
 from __future__ import annotations
 
-from absl.testing import absltest
-from absl.testing import parameterized
+from absl.testing import absltest, parameterized
 from tunix.examples.data import math_dataset
 
 

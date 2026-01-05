@@ -17,9 +17,9 @@
 from typing import Tuple
 
 import jax
-from jax.interpreters import pxla
 import jax.sharding as shd
 import numpy as np
+from jax.interpreters import pxla
 
 
 def shard_input(

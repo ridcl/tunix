@@ -33,17 +33,16 @@
 import os
 import unittest
 
-from absl.testing import absltest
-from absl.testing import parameterized
-from flax.traverse_util import flatten_dict
 import jax.numpy as jnp
 import numpy as np
 import safetensors.numpy as safe_np
-from tunix.tests import lora_params_test_base
+from absl.testing import absltest, parameterized
+from flax.traverse_util import flatten_dict
 from tunix.models.gemma3 import model as gemma3_model
 from tunix.models.gemma3 import params as gemma3_params
 from tunix.models.gemma3 import params_safetensors as gemma3_params_safetensors
-from tunix.tests import test_common
+from tunix.tests import lora_params_test_base, test_common
+
 
 class GemmaParamsTest(parameterized.TestCase):
 

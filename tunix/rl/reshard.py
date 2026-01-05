@@ -14,20 +14,21 @@
 
 """Resharding functions."""
 
-from concurrent import futures
 import functools
 # Keep this import for google internal usage.
 import math  # pylint: disable=unused-import
 import os
 import threading
 import time
+from concurrent import futures
 from typing import Any, Callable
 
-from absl import logging
 import jax
 import jaxtyping
+from absl import logging
 from flax import nnx
 from tunix.rl import utils
+
 
 # TODO(tsbao): move this to util
 def callback_on_ready(
@@ -331,9 +332,14 @@ def _get_reshard_fn_pathwaysutils(
   # This import is expected to fail sometimes internally if pathwaysutils is
   # not linked to the binary.
   try:
-    from pathwaysutils.experimental import reshard as experimental_reshard  # pylint: disable=g-import-not-at-top # pytype: disable=import-error
-    from pathwaysutils.experimental import split_by_mesh_axis  # pylint: disable=g-import-not-at-top # pytype: disable=import-error
-    from pathwaysutils import jax as pw_jax  # pylint: disable=g-import-not-at-top # pytype: disable=import-error
+    from pathwaysutils import \
+        jax as \
+        pw_jax  # pylint: disable=g-import-not-at-top # pytype: disable=import-error
+    from pathwaysutils.experimental import \
+        reshard as \
+        experimental_reshard  # pylint: disable=g-import-not-at-top # pytype: disable=import-error
+    from pathwaysutils.experimental import \
+        split_by_mesh_axis  # pylint: disable=g-import-not-at-top # pytype: disable=import-error
   except ImportError:
     logging.info(
         'Cannot import PathwaysUtils and experimental reshard API.'

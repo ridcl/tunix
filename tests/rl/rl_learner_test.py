@@ -2,13 +2,13 @@
 
 from unittest import mock
 
-from absl.testing import absltest
-from absl.testing import parameterized
-from flax import nnx
 import optax
+from absl.testing import absltest, parameterized
+from flax import nnx
 from tunix.rl import algorithm_config as algo_config_lib
 from tunix.rl import rl_cluster as rl_cluster_lib
 from tunix.rl import rl_learner
+
 
 class DummyModel(nnx.Module):
   pass

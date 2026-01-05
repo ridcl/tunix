@@ -22,10 +22,10 @@ This provides a mapping from the upstream checkpoints[1] to our implementation.
 import functools
 from typing import Any
 
-from etils import epath
 import flax
-from flax import nnx
 import jax
+from etils import epath
+from flax import nnx
 from jax import numpy as jnp
 from orbax import checkpoint as ocp
 from tunix.models import safetensors_saver

@@ -14,9 +14,8 @@
 
 """Compatibility utils for old jax and flax versions."""
 
-from flax import nnx
 import jax
-
+from flax import nnx
 
 # Flax version compatibility.
 ModuleList = list

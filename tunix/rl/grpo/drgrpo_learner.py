@@ -13,9 +13,9 @@
 # limitations under the License.
 """Helper functions for GRPO Trainer."""
 import dataclasses
+
 import jax
-from tunix.rl import function_registry
-from tunix.rl import rl_learner
+from tunix.rl import function_registry, rl_learner
 from tunix.rl.grpo import grpo_learner as grpo_learner_lib
 
 TrainingInputT = rl_learner.TrainingInputT

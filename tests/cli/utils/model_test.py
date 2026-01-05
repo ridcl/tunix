@@ -15,11 +15,10 @@
 import os
 from unittest import mock
 
-from absl.testing import absltest
-from absl.testing import parameterized
-from flax import nnx
 import jax
 import qwix
+from absl.testing import absltest, parameterized
+from flax import nnx
 from tunix.cli.utils import model
 from tunix.generate import tokenizer_adapter
 from tunix.models import automodel

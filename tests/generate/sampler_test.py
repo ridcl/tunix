@@ -14,11 +14,10 @@
 
 # Forked from flax/examples/gemma/sampler_test.py
 
-from absl.testing import absltest
-from absl.testing import parameterized
-from flax import nnx
 import jax
 import numpy as np
+from absl.testing import absltest, parameterized
+from flax import nnx
 from tunix.generate import sampler as sampler_lib
 from tunix.generate import utils
 from tunix.tests import test_common as tc

@@ -1,6 +1,6 @@
-from absl.testing import absltest
 import jax
 import jax.numpy as jnp
+from absl.testing import absltest
 from tunix.generate import beam_search as beam_search_lib
 from tunix.generate import sampler as sampler_lib
 

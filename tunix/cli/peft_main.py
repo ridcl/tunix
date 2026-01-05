@@ -15,14 +15,14 @@
 """Main entry point for PEFT training."""
 from collections.abc import Callable
 from typing import Any
+
+import jax
 from absl import app
 from flax import nnx
-import jax
 from tunix.cli import config
 from tunix.cli.utils import model as model_lib
 from tunix.examples.data import translation_dataset as data_lib
-from tunix.sft import peft_trainer
-from tunix.sft import utils
+from tunix.sft import peft_trainer, utils
 
 
 class PeftPipeline(config.HyperParameters):

@@ -17,12 +17,11 @@ import time
 from unittest import mock
 
 from absl.testing import absltest
-from tunix.rl.agentic.agents import agent_types
-from tunix.rl.agentic.agents import base_agent
+from tunix.rl.agentic import utils
+from tunix.rl.agentic.agents import agent_types, base_agent
 from tunix.rl.agentic.environments import base_environment
 from tunix.rl.agentic.rewards import reward_types
 from tunix.rl.agentic.trajectory import trajectory_collect_engine
-from tunix.rl.agentic import utils
 
 
 class TrajectoryCollectEngineTest(absltest.TestCase):

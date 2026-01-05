@@ -35,13 +35,13 @@ def preprocess(
   # Add batch if needed.
   if x.ndim == 3:
     x = x[None, ...]  # [1,H,W,3]
-  if x.ndim != 4 or x.shape[-1] != 3:
-    raise ValueError(f"Expected [B,H,W,3], got shape {x.shape}")
+  if not (x.ndim == 4 or x.ndim == 5) or x.shape[-1] != 3:
+    raise ValueError(f"Expected [B,H,W,3] or [B,N,H,W,3], got shape {x.shape}")
 
-  b, h, w, c = x.shape
+  *b, h, w, c = x.shape
   # Resize to target square (simple bilinear; if you prefer center-crop+resize, do that here)
   x = jimg.resize(
-      x, (b, image_size, image_size, c), method="bilinear", antialias=True
+      x, (*b, image_size, image_size, c), method="bilinear", antialias=True
   )
 
   # [0,1] -> normalize

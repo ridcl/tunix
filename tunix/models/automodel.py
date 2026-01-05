@@ -18,13 +18,13 @@ import gc
 import importlib
 import os
 from typing import Any
-from absl import logging
-from flax import nnx
+
 import jax
 import jax.numpy as jnp
+from absl import logging
+from flax import nnx
 from orbax import checkpoint as ocp
 from tunix.models import naming
-
 
 _BASE_MODULE_PATH = 'tunix.models'  # pylint: disable=invalid-name
 
@@ -255,11 +255,13 @@ def download_model(
   """
 
   if model_source == ModelSource.KAGGLE:
-    from tunix.oss import utils as oss_utils  # pylint: disable=g-import-not-at-top
+    from tunix.oss import \
+        utils as oss_utils  # pylint: disable=g-import-not-at-top
 
     return oss_utils.kaggle_pipeline(model_id_or_path, model_download_path)
   elif model_source == ModelSource.HUGGINGFACE:
-    from tunix.oss import utils as oss_utils  # pylint: disable=g-import-not-at-top
+    from tunix.oss import \
+        utils as oss_utils  # pylint: disable=g-import-not-at-top
 
     return oss_utils.hf_pipeline(model_id_or_path, model_download_path)
   elif model_source == ModelSource.GCS:

@@ -1,8 +1,6 @@
 """Tests for torch_utils."""
 
-from absl.testing import absltest
-from absl.testing import parameterized
-
+from absl.testing import absltest, parameterized
 from tunix.utils import torch_utils
 
 

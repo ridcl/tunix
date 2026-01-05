@@ -17,14 +17,13 @@
 import os
 import unittest
 
-from absl.testing import absltest
 import jax.numpy as jnp
 import numpy as np
 import safetensors.numpy as safe_np
+from absl.testing import absltest
 from tunix.models.qwen3 import model as qwen3_model
 from tunix.models.qwen3 import params as qwen3_params
-from tunix.tests import lora_params_test_base
-from tunix.tests import test_common
+from tunix.tests import lora_params_test_base, test_common
 
 
 class Qwen3ParamsTest(lora_params_test_base.LoraParamsTestBase):

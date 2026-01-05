@@ -17,8 +17,8 @@
 import dataclasses
 import threading
 
-from absl import logging
 import jax
+from absl import logging
 
 
 @dataclasses.dataclass(frozen=True)

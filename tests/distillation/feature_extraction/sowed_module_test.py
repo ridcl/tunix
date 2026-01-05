@@ -14,10 +14,10 @@
 
 """Unit tests for sowed module wrapping."""
 
-from absl.testing import absltest
-from flax import nnx
 import jax
 import jax.numpy as jnp
+from absl.testing import absltest
+from flax import nnx
 from tunix.distillation.feature_extraction import sowed_module
 from tunix.tests import test_common as tc
 

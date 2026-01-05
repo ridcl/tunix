@@ -13,15 +13,16 @@ We use v5e-8 for this experiment.
 # Imports
 import contextlib
 import os
-from pprint import pprint
 import re
 import time
+from pprint import pprint
 
 # %%
 # Environment detection
 try:
+  from GOOGLE_INTERNAL_PACKAGE_PATH.perftools.accelerators.xprof.api.python import \
+      xprof_session
   from GOOGLE_INTERNAL_PACKAGE_PATH.pyglib import gfile
-  from GOOGLE_INTERNAL_PACKAGE_PATH.perftools.accelerators.xprof.api.python import xprof_session
 
   ENV = 'g3'
 except ImportError:
@@ -36,8 +37,8 @@ if ENV == 'oss':
 
 # %%
 import jax
-from jax import numpy as jnp
 import optax
+from jax import numpy as jnp
 from orbax import checkpoint as ocp
 
 # %%
@@ -55,17 +56,17 @@ else:  # oss
 
 # %%
 with adhoc_context:
-  from tunix.rl import rl_cluster as rl_cluster_lib
-  from tunix.rl.rollout import base_rollout
-  from tunix.sft import metrics_logger
-  from tunix.rl.agentic.parser.chat_template_parser import parser
-  from tunix.generate import tokenizer_adapter as tokenizer_lib
-  from tunix.models.gemma import model as gemma_lib
-  from tunix.sft import utils
-  from tunix.utils import script_utils
-  from tunix.rl.experimental.agentic_grpo_learner import GRPOConfig, GRPOLearner
   from flax import nnx
   from tunix.cli.utils import model as model_utils
+  from tunix.generate import tokenizer_adapter as tokenizer_lib
+  from tunix.models.gemma import model as gemma_lib
+  from tunix.rl import rl_cluster as rl_cluster_lib
+  from tunix.rl.agentic.parser.chat_template_parser import parser
+  from tunix.rl.experimental.agentic_grpo_learner import (GRPOConfig,
+                                                          GRPOLearner)
+  from tunix.rl.rollout import base_rollout
+  from tunix.sft import metrics_logger, utils
+  from tunix.utils import script_utils
 
 # %%
 show_hbm_usage = utils.show_hbm_usage

@@ -15,11 +15,11 @@
 
 # pylint: disable=g-importing-member
 
-from tunix.distillation.feature_extraction.pooling import avg_pool_array_to_target_shape
-from tunix.distillation.feature_extraction.projection import ModelWithFeatureProjection
-from tunix.distillation.feature_extraction.projection import remove_feature_projection_from_models
-from tunix.distillation.feature_extraction.projection import setup_models_with_feature_projection
-from tunix.distillation.feature_extraction.sowed_module import pop_sowed_intermediate_outputs
-from tunix.distillation.feature_extraction.sowed_module import SowedModule
-from tunix.distillation.feature_extraction.sowed_module import unwrap_sowed_modules
-from tunix.distillation.feature_extraction.sowed_module import wrap_model_with_sowed_modules
+from tunix.distillation.feature_extraction.pooling import \
+    avg_pool_array_to_target_shape
+from tunix.distillation.feature_extraction.projection import (
+    ModelWithFeatureProjection, remove_feature_projection_from_models,
+    setup_models_with_feature_projection)
+from tunix.distillation.feature_extraction.sowed_module import (
+    SowedModule, pop_sowed_intermediate_outputs, unwrap_sowed_modules,
+    wrap_model_with_sowed_modules)

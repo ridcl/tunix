@@ -20,11 +20,11 @@ import dataclasses
 from typing import Any
 
 import flax
-from flax import nnx
 import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
+from flax import nnx
 from PIL import Image
 # TODO(abheesht): We should move TokenizerAdapter outside `generate`.
 from tunix.generate import tokenizer_adapter

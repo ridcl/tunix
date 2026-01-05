@@ -17,9 +17,7 @@
 import copy
 import logging
 
-from tunix.rl.agentic.agents import agent_types
-from tunix.rl.agentic.agents import base_agent
-
+from tunix.rl.agentic.agents import agent_types, base_agent
 
 Trajectory = agent_types.Trajectory
 Step = agent_types.Step

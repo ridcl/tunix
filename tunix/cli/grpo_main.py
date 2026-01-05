@@ -13,10 +13,8 @@
 # limitations under the License.
 
 """Main entry point for GRPO training."""
-from absl import app
-from absl import flags
-from absl import logging
 import jax
+from absl import app, flags, logging
 from tunix.cli import config
 from tunix.cli.utils import data as data_lib
 from tunix.cli.utils import model as model_lib

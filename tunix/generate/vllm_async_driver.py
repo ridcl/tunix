@@ -21,19 +21,18 @@ where multiprocessing is undesirable (e.g. JAX integration).
 
 from __future__ import annotations
 
-from concurrent.futures import Future
-from absl import logging
 import os
 import threading
 import time
+from concurrent.futures import Future
 from typing import Any, Callable, Dict, Optional, Union
 
+from absl import logging
 from vllm import envs
 from vllm.engine.arg_utils import EngineArgs
 from vllm.inputs import PromptType
 from vllm.lora.request import LoRARequest
-from vllm.outputs import PoolingRequestOutput
-from vllm.outputs import RequestOutput
+from vllm.outputs import PoolingRequestOutput, RequestOutput
 from vllm.pooling_params import PoolingParams
 from vllm.sampling_params import SamplingParams
 from vllm.usage.usage_lib import UsageContext

@@ -13,11 +13,10 @@
 # limitations under the License.
 """Unit tests for PPO helper functions."""
 
-from absl.testing import absltest
-from absl.testing import parameterized
 import jax
 import jax.numpy as jnp
 import numpy as np
+from absl.testing import absltest, parameterized
 from tunix.rl.ppo import ppo_helpers
 
 

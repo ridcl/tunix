@@ -21,11 +21,8 @@ import logging
 from typing import Callable
 
 import numpy as np
-from tunix.perf import metrics
-from tunix.perf import span
-from tunix.perf import trace
+from tunix.perf import metrics, span, trace
 from tunix.rl import rl_cluster
-
 
 ClusterConfig = rl_cluster.ClusterConfig
 MetricsT = metrics.MetricsT

@@ -16,11 +16,10 @@
 
 from typing import Callable
 
-from flax import nnx
 import jax
-from tunix.distillation.strategies import base_strategy
-from tunix.distillation.strategies import feature_pooling
-from tunix.distillation.strategies import feature_projection
+from flax import nnx
+from tunix.distillation.strategies import (base_strategy, feature_pooling,
+                                           feature_projection)
 
 ModelForwardCallable = base_strategy.ModelForwardCallable
 

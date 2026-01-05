@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import os
-from absl.testing import absltest
+
 import chex
-from flax import nnx
 import jax
-from jax import sharding
 import jax.numpy as jnp
 import numpy as np
-from tunix.rl import common
-from tunix.rl import utils
+from absl.testing import absltest
+from flax import nnx
+from jax import sharding
+from tunix.rl import common, utils
 from tunix.tests import test_common as tc
 
 os.environ['XLA_FLAGS'] = '--xla_force_host_platform_device_count=4'

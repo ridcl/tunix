@@ -14,10 +14,8 @@
 
 from typing import Any, Callable, Dict, List
 
+from tunix.rl.agentic.rewards import reward, reward_types
 from tunix.utils import math_utils
-from tunix.rl.agentic.rewards import reward
-from tunix.rl.agentic.rewards import reward_types
-
 
 THOUGHT_DELIMITER_END = "</think>"
 RewardOutput = reward_types.RewardOutput

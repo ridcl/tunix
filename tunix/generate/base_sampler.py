@@ -17,10 +17,10 @@ import abc
 import dataclasses
 from typing import List, Optional
 
-from flax import nnx
-from flax.nnx import statelib
 import jax
 import numpy as np
+from flax import nnx
+from flax.nnx import statelib
 
 ABC = abc.ABC
 abstractmethod = abc.abstractmethod

@@ -39,19 +39,17 @@ Collect API:
 
 from __future__ import annotations
 
-from concurrent import futures
 import contextlib
 import logging
 import threading
 import time
+from concurrent import futures
 from typing import Any, Callable
 
 import jax
 import jaxtyping
 import numpy as np
-from tunix.perf import metrics
-from tunix.perf import span
-
+from tunix.perf import metrics, span
 
 JaxDevice = Any
 MetricsT = metrics.MetricsT

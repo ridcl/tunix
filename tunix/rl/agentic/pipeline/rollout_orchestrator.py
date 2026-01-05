@@ -22,18 +22,16 @@ groups them into batches for further processing.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Hashable
 import copy
 import logging
+from collections.abc import Hashable
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type
 
 from tunix.rl.agentic import utils
-from tunix.rl.agentic.agents import agent_types
-from tunix.rl.agentic.agents import base_agent
+from tunix.rl.agentic.agents import agent_types, base_agent
 from tunix.rl.agentic.environments import base_environment
 from tunix.rl.agentic.queue_manager import group_queue_manager
 from tunix.rl.agentic.trajectory import trajectory_collect_engine
-
 
 Trajectory = agent_types.Trajectory
 ConversationAgentBase = base_agent.ConversationAgentBase

@@ -2,17 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 import dataclasses
+from collections.abc import Sequence
 from typing import Optional
 
 import flax
-from flax import nnx
-from flax.nnx import filterlib
-from flax.nnx import graph
-from flax.nnx import statelib
 import jax
 import jax.numpy as jnp
+from flax import nnx
+from flax.nnx import filterlib, graph, statelib
 from tunix.models.gemma import model as gemma_lib
 from tunix.sft import utils
 

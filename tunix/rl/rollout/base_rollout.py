@@ -19,9 +19,9 @@ import dataclasses
 from typing import Any, List, Optional, Tuple
 
 import jax
-from jax import numpy as jnp
 import jaxtyping
 import numpy as np
+from jax import numpy as jnp
 from tunix.generate import mappings
 
 ABC = abc.ABC

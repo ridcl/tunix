@@ -13,15 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from absl.testing import parameterized
-from flax import nnx
 import jax
-from jax import sharding
 import jax.numpy as jnp
 import numpy as np
+from absl.testing import parameterized
+from flax import nnx
+from jax import sharding
 from tunix.generate import utils
 from tunix.rl import reshard
-
 
 PartitionSpec = sharding.PartitionSpec
 NamedSharding = sharding.NamedSharding

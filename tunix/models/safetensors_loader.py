@@ -20,15 +20,14 @@ import mmap
 import os
 import struct
 
-from etils import epath
-from flax import nnx
 import jax
 import jax.numpy as jnp
 import ml_dtypes
 import numpy as np
+from etils import epath
+from flax import nnx
 from tunix.oss import utils
-from tunix.utils import compat
-from tunix.utils import torch_utils
+from tunix.utils import compat, torch_utils
 
 load_file_from_gcs = utils.load_file_from_gcs
 

@@ -16,15 +16,15 @@
 
 import atexit
 import dataclasses
-from itertools import count
 import math
 import os
+from itertools import count
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from absl import logging
 import jax
 import jaxtyping
 import numpy as np
+from absl import logging
 from tunix.generate import base_sampler
 from tunix.generate import tokenizer_adapter as tok_adapter
 from tunix.generate import utils
@@ -35,9 +35,7 @@ from vllm import LLM
 from vllm.engine.arg_utils import EngineArgs
 from vllm.inputs import TokensPrompt
 from vllm.outputs import RequestOutput
-from vllm.sampling_params import BeamSearchParams
-from vllm.sampling_params import SamplingParams
-
+from vllm.sampling_params import BeamSearchParams, SamplingParams
 
 # Colocate vllm engine and worker in the main process
 os.environ["VLLM_ENABLE_V1_MULTIPROCESSING"] = "0"

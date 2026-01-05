@@ -16,8 +16,8 @@
 
 import enum
 
-from flax import nnx
 import jax.numpy as jnp
+from flax import nnx
 
 
 class PaddingMode(enum.Enum):

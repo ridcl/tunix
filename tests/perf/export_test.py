@@ -15,10 +15,7 @@
 from unittest import mock
 
 from absl.testing import absltest
-from tunix.perf import export
-from tunix.perf import metrics
-from tunix.perf import span
-from tunix.perf import trace
+from tunix.perf import export, metrics, span, trace
 
 patch = mock.patch
 
