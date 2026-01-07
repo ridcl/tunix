@@ -1104,6 +1104,7 @@ class Gemma3(nnx.Module, pytree=False):
         'attention_mask': jnp.ones(
             (dummy_batch_size, 1, dummy_seq_len), dtype=jnp.bool
         ),
+        'pixel_values': jnp.ones((1, 896, 896, 3), dtype=jnp.float32)
     }
 
   @property

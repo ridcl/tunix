@@ -14,6 +14,7 @@
 
 """Utilities for saving models with merged LoRA weights in safetensors format."""
 
+import glob
 import os
 import shutil
 from typing import Any, Callable
@@ -50,6 +51,35 @@ def _extract_lora_from_component(
     lora_b = getattr(proj, lora_b_attr)
     return (path, (lora_a, lora_b))
   return None
+
+
+def _update_state_keys(base_state: dict, lora_layers: dict, state_key_transform_fn, alpha, rank):
+  updated_state_keys = set([])
+  for lora_name, (lora_a, lora_b) in lora_layers.items():
+    state_key = state_key_transform_fn(lora_name)
+    if state_key not in base_state:
+      # Skip keys that are not present in this file
+      continue
+
+    lora_a_val = jnp.asarray(getattr(lora_a, 'value', lora_a))
+    lora_b_val = jnp.asarray(getattr(lora_b, 'value', lora_b))
+
+    # Reshape 3D tensors to 2D if necessary
+    if lora_a_val.ndim == 3:
+      d0, d1, d2 = lora_a_val.shape
+      lora_a_val = lora_a_val.reshape(d0 * d1, d2)
+    if lora_b_val.ndim == 3:
+      d0, d1, d2 = lora_b_val.shape
+      lora_b_val = lora_b_val.reshape(d0, d1 * d2)
+
+    # Compute and apply LoRA delta
+    combined_lora = (lora_a_val @ lora_b_val) * (alpha / rank)
+    base_state[state_key] += combined_lora.T.astype(base_state[state_key].dtype)
+
+    # Save the updated LoRA keys for verification later
+    updated_state_keys.add(lora_name)
+  return updated_state_keys
+
 
 
 def save_lora_merged_model_as_safetensors(
@@ -109,33 +139,18 @@ def save_lora_merged_model_as_safetensors(
       lora_layers |= custom_layer_extractor_fn(layer)
 
   # Load base model state
-  base_state = safe_np.load_file(local_model_path + '/model.safetensors')
+  updated_state_keys = set([])
+  for base_file_path in glob.glob(local_model_path + "/model*.safetensors"):
+    base_state = safe_np.load_file(base_file_path)
+    updated = _update_state_keys(base_state, lora_layers, state_key_transform_fn, alpha, rank)
+    output_file_path = os.path.join(output_dir, os.path.basename(base_file_path))
+    safe_np.save_file(base_state, output_file_path)
+    updated_state_keys.update(updated)
 
-  # Apply LoRA deltas
-  for lora_name, (lora_a, lora_b) in lora_layers.items():
-    state_key = state_key_transform_fn(lora_name)
-    assert (
-        state_key in base_state
-    ), f'LoRA layer {lora_name} not found in base model state dict'
-
-    lora_a_val = jnp.asarray(getattr(lora_a, 'value', lora_a))
-    lora_b_val = jnp.asarray(getattr(lora_b, 'value', lora_b))
-
-    # Reshape 3D tensors to 2D if necessary
-    if lora_a_val.ndim == 3:
-      d0, d1, d2 = lora_a_val.shape
-      lora_a_val = lora_a_val.reshape(d0 * d1, d2)
-    if lora_b_val.ndim == 3:
-      d0, d1, d2 = lora_b_val.shape
-      lora_b_val = lora_b_val.reshape(d0, d1 * d2)
-
-    # Compute and apply LoRA delta
-    combined_lora = (lora_a_val @ lora_b_val) * (alpha / rank)
-    base_state[state_key] += combined_lora.T.astype(base_state[state_key].dtype)
-
-  # Save merged model
-  safetensors_path = os.path.join(output_dir, 'model.safetensors')
-  safe_np.save_file(base_state, safetensors_path)
+  keys_not_in_base_model = set(lora_layers.keys()) - updated_state_keys
+  assert (
+    len(keys_not_in_base_model) == 0
+  ), f'LoRA layers not found in base model state dict: {keys_not_in_base_model}'
 
   # Copy non-safetensors files (config, tokenizer, etc.)
   for filename in os.listdir(local_model_path):

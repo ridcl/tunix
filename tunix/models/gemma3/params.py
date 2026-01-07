@@ -19,8 +19,9 @@ This provides a mapping from the upstream checkpoints[1] to our implementation.
 [1] https://github.com/google-deepmind/gemma
 """
 
+import re
 import functools
-from typing import Any
+from typing import Any, Optional
 
 import flax
 import jax
@@ -234,22 +235,27 @@ def _extract_gemma3_lora_layers(layer: Any) -> dict[str, tuple[Any, Any]]:
   return {}
 
 
-def _gemma3_state_key_to_safetensors_key(lora_name: str) -> str:
+def _gemma3_state_key_to_safetensors_key(lora_name: str, model_id: Optional[str] = None) -> str:
   """Transform Gemma3 layer path to safetensors state dict key.
 
   Args:
+    model_id: Specific model ID.
     lora_name: Internal layer path (e.g., 'layers.0.attn.q_einsum').
 
   Returns:
     Safetensors state dict key (e.g., 'model.layers.0.self_attn.q_proj.weight').
   """
-  return (
+  state_key = (
       f'model.{lora_name}.weight'.replace('.attn.', '.self_attn.')
       .replace('q_einsum', 'q_proj')
       .replace('k_einsum', 'k_proj')
       .replace('v_einsum', 'v_proj')
       .replace('attn_vec_einsum', 'o_proj')
   )
+  # Multimodal versions like gemma-3-4b and above have additional prefix "language_model."
+  if model_id and ("4b" in model_id or "12b" in model_id or "27b" in model_id):
+    state_key = "language_model." + state_key
+  return state_key
 
 
 def save_lora_merged_model_as_safetensors(
@@ -268,13 +274,18 @@ def save_lora_merged_model_as_safetensors(
     rank: LoRA rank used during training.
     alpha: LoRA alpha used during training.
   """
+  # Extract model ID from the local path
+  if matched := re.search(r"/models--(google--gemma-3-[\d+]b(-it)?)/", local_model_path):
+    model_id = matched.groups()[0].replace("--", "/")
+  else:
+    raise ValueError(f"Cannot extract model ID from local model path: {local_model_path}")
   safetensors_saver.save_lora_merged_model_as_safetensors(
       local_model_path=local_model_path,
       output_dir=output_dir,
       lora_model=lora_model,
       rank=rank,
       alpha=alpha,
-      state_key_transform_fn=_gemma3_state_key_to_safetensors_key,
+      state_key_transform_fn=functools.partial(_gemma3_state_key_to_safetensors_key, model_id=model_id),
       field_patterns=(
           'q_einsum',
           'attn_vec_einsum',
