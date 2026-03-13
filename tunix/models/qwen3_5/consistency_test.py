@@ -501,9 +501,9 @@ def _config_from_model_id(
   name_lower = name.lower()
   if '0.8b' in name_lower or '0b8' in name_lower:
     return (
-        model_lib.ModelConfig.qwen3_5_0b8_vl()
+        model_lib.ModelConfig.qwen3_5_0p8b_vl()
         if vision
-        else model_lib.ModelConfig.qwen3_5_0b8()
+        else model_lib.ModelConfig.qwen3_5_0p8b()
     )
   if '4b' in name_lower:
     return (
