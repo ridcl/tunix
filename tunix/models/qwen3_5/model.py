@@ -127,7 +127,7 @@ class ModelConfig:
     )
 
   @classmethod
-  def qwen3_5_0b8(cls):
+  def qwen3_5_0p8b(cls):
     return cls(
         num_layers=24,
         vocab_size=248320,
@@ -179,9 +179,9 @@ class ModelConfig:
     )
 
   @classmethod
-  def qwen3_5_0b8_vl(cls):
+  def qwen3_5_0p8b_vl(cls):
     """Qwen3.5-0.8B with vision encoder (no deepstack)."""
-    cfg = cls.qwen3_5_0b8()
+    cfg = cls.qwen3_5_0p8b()
     cfg.vision_config = VisionModelConfig(
         hidden_size=768,
         out_hidden_size=1024,
