@@ -1099,6 +1099,38 @@ class Qwen3_5(BackendMappingMixin, nnx.Module):
         text_positions, attention_mask
     )
 
+    # When using a KV cache the key dimension equals cache_size, not seq_len.
+    # The attention logit tensor has shape [B, heads, L_q, cache_size], so
+    # the mask must match [B, L_q, cache_size].
+    #
+    # Two cases:
+    #   Prefill  (L_q > 1): pad the [B, L, L] causal mask with False on the
+    #     right — those cache slots have never been written.
+    #   Decode   (L_q = 1): the position-based mask is [B, 1, 1] and zero-
+    #     padding would incorrectly block all slots except position 0.
+    #     Instead build a validity mask: attend to every slot that was already
+    #     written (indices 0 … end_index, inclusive, because the attention
+    #     block writes the current token *before* computing attention).
+    if cache is not None:
+      first_attn_cache = next((v for v in cache.values() if 'k' in v), None)
+      if first_attn_cache is not None:
+        cache_size = first_attn_cache['k'].shape[1]
+        seq_len_q = causal_mask.shape[1]
+        if seq_len_q > 1:
+          # Prefill: extend key dimension from seq_len to cache_size.
+          pad = cache_size - causal_mask.shape[-1]
+          if pad > 0:
+            causal_mask = jnp.pad(causal_mask, ((0, 0), (0, 0), (0, pad)))
+        else:
+          # Decode: attend to all slots 0 … end_index (written before attn).
+          end_index = first_attn_cache['end_index'][0]
+          valid = (
+              jnp.arange(cache_size, dtype=jnp.int32)[None, None, :]
+              <= end_index
+          )  # [1, 1, cache_size]
+          bsz = causal_mask.shape[0]
+          causal_mask = jnp.broadcast_to(valid, (bsz, 1, cache_size))
+
     # Inject vision tokens if present.
     if self.config.vision_config is not None and pixel_values is not None:
       image_pad_id = self.config.vision_config.image_pad_id
