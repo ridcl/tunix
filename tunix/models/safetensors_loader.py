@@ -31,7 +31,6 @@ from tunix.oss import utils
 from tunix.utils import compat
 from tunix.utils import torch_utils
 
-
 load_file_from_gcs = utils.load_file_from_gcs
 
 torch_key_to_jax_key = torch_utils.torch_key_to_jax_key
@@ -87,48 +86,26 @@ def load_safetensors_with_offsets(filepath):
 
   tensor_metadata = []
 
-  itemsize = 2  # Default to bfloat16
-  common_dtype = None
   for tensor_name, metadata in header.items():
     if tensor_name == '__metadata__':
       continue
 
     dtype = metadata['dtype']
-    if common_dtype is None:
-      common_dtype = dtype
-      np_type = to_np_dtype(dtype)
-      itemsize = np.dtype(np_type).itemsize
-
     start_byte, end_byte = metadata['data_offsets']
     shape = tuple(metadata['shape'])
 
-    size_bytes = end_byte - start_byte
-    size_elements = size_bytes // itemsize
-    offset_elements = start_byte // itemsize
-
     tensor_metadata.append({
         'name': tensor_name,
-        'offset_elements': offset_elements,
-        'size_elements': size_elements,
+        'start_byte': start_byte,
+        'end_byte': end_byte,
         'shape': shape,
         'dtype': dtype,
     })
 
-  file_size = os.path.getsize(filepath)
-  data_size_bytes = file_size - data_block_start_offset_bytes
-  total_elements = data_size_bytes // itemsize
-
   f = open(filepath, 'rb')
-
   mm = mmap.mmap(f.fileno(), 0, prot=mmap.PROT_READ)
-  contiguous_array = np.frombuffer(
-      mm,
-      dtype=to_np_dtype(common_dtype),
-      count=total_elements,
-      offset=data_block_start_offset_bytes,
-  )
 
-  return contiguous_array, tensor_metadata, mm, f
+  return data_block_start_offset_bytes, tensor_metadata, mm, f
 
 
 def load_and_create_model(
@@ -186,18 +163,18 @@ def load_and_create_model(
 
   key_map = key_mapping(config)
 
-  arrays = []
+  shards = []
   mmaps = []
   file_handles = []
   for f in files:
-    contiguous_array, tensor_metadata, mm, fh = load_safetensors_with_offsets(f)
-    arrays.append((contiguous_array, tensor_metadata))
+    data_offset, tensor_metadata, mm, fh = load_safetensors_with_offsets(f)
+    shards.append((data_offset, tensor_metadata, mm))
     mmaps.append(mm)
     file_handles.append(fh)
 
   state_dict = {}
   skipped_keys = []
-  for array, metadata_list in arrays:
+  for data_offset, metadata_list, mm in shards:
     for metadata in metadata_list:
       try:
         jax_key_mapped, transform = torch_key_to_jax_key(
@@ -206,10 +183,14 @@ def load_and_create_model(
       except ValueError:
         skipped_keys.append(metadata['name'])
         continue
-      parameter = array[
-          metadata['offset_elements'] : metadata['offset_elements']
-          + metadata['size_elements']
-      ].reshape(metadata['shape'])
+      # Use per-tensor dtype so mixed-precision checkpoints are handled
+      # correctly (e.g. F32 scalar params alongside BF16 weight matrices).
+      np_dtype = to_np_dtype(metadata['dtype'])
+      abs_start = data_offset + metadata['start_byte']
+      abs_end = data_offset + metadata['end_byte']
+      parameter = np.frombuffer(mm[abs_start:abs_end], dtype=np_dtype).reshape(
+          metadata['shape']
+      )
       if transform is not None:
         permute, reshape = transform
         if permute:
