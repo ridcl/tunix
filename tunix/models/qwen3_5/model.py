@@ -1071,7 +1071,7 @@ class Qwen3_5(BackendMappingMixin, nnx.Module):
       pixel_values: jaxtyping.Array | None,
       vision_precomputed: VisionGridData | None,
       cache: Cache | None,
-      attention_mask: jaxtyping.Array | None,  # [B, L] padding (1=real, 0=pad)
+      padding_mask: jaxtyping.Array | None,  # [B, L] padding (1=real, 0=pad)
       output_hidden_states: bool = False,
   ) -> tuple[jaxtyping.Array, Cache | None]:
     """Forward pass.
@@ -1095,9 +1095,7 @@ class Qwen3_5(BackendMappingMixin, nnx.Module):
 
     # Build causal attention mask from the temporal M-RoPE axis.
     text_positions = positions[0]  # [B, L]
-    causal_mask = make_causal_mask_from_positions(
-        text_positions, attention_mask
-    )
+    causal_mask = make_causal_mask_from_positions(text_positions, padding_mask)
 
     # When using a KV cache the key dimension equals cache_size, not seq_len.
     # The attention logit tensor has shape [B, heads, L_q, cache_size], so
@@ -1160,7 +1158,7 @@ class Qwen3_5(BackendMappingMixin, nnx.Module):
           positions,
           layer_cache,
           causal_mask,
-          attention_mask,
+          padding_mask,
       )
       if cache is not None:
         new_cache[layer_name] = layer_cache  # pytype: disable=container-type-mismatch
