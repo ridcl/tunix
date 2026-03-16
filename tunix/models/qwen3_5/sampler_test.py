@@ -250,7 +250,7 @@ class Qwen3_5Sampler:
           input_ids=input_ids_jax,
           image_grid_thw=jnp.array(image_grid_thw),
           video_grid_thw=None,
-          attention_mask=attn_mask_jax,
+          input_mask=attn_mask_jax,
           spatial_merge_size=cfg.spatial_merge_size,
           image_token_id=cfg.image_pad_id,
           video_token_id=cfg.image_pad_id + 1,  # unused

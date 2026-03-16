@@ -39,7 +39,7 @@ class EncodedBatch:
 
   Attributes:
     input_tokens:    [B, L]    int32   — token ids (right-padded)
-    input_mask:      [B, L]    bool    — True at padding positions
+    input_mask:      [B, L]    bool    — True at non-padding positions
     completion_mask: [B, L]    bool    — True at tokens to include in loss
     positions:       [3, B, L] int32   — 3-D M-RoPE positions
     pixel_values:    [P, C]    float32 — patch tokens, all images concatenated
@@ -66,7 +66,6 @@ def encode_batch(
     padding: bool | str = True,
     truncation: bool | str = True,
     pad_to_multiple_of: int | None = None,
-    completion_mask: np.ndarray | None = None,
 ) -> EncodedBatch:
   """Encode a batch of pre-formatted texts with corresponding image lists.
 
@@ -83,80 +82,52 @@ def encode_batch(
     padding: Passed to the processor (e.g. True, 'max_length').
     truncation: Passed to the processor.
     pad_to_multiple_of: If set, pad sequence length to the next multiple.
-    completion_mask: Optional pre-built [B, L] bool mask marking tokens to
-      include in the loss.  When None the mask is all-False (use
-      encode_messages to build a mask automatically).
 
   Returns:
-    EncodedBatch.  pixel_values is [P, C] with all patches concatenated;
-    image_grid_thw is [N, 3] with one row per image across the whole batch.
-    Both are None when the batch contains no images.
+    EncodedBatch with completion_mask all-False.  Use encode_messages to get a
+    mask populated by role.  pixel_values is [P, C] with all patches
+    concatenated; image_grid_thw is [N, 3] with one row per image across the
+    whole batch.  Both are None when the batch contains no images.
   """
-  flat_images = [img for imgs in images for img in imgs]
   inputs = processor(
       text=texts,
-      images=flat_images if flat_images else None,
+      images=images,
       max_length=max_seq_len,
       padding=padding,
       truncation=truncation,
       pad_to_multiple_of=pad_to_multiple_of,
   )
 
-  input_ids = np.array(inputs['input_ids'], dtype=np.int32)  # [B, L]
-  attn_mask = np.array(inputs['attention_mask'], dtype=np.int32)  # [B, L]
+  input_ids = jnp.array(inputs['input_ids'], dtype=np.int32)  # [B, L]
+  input_mask = jnp.array(inputs['attention_mask'], dtype=np.int32)  # [B, L]
   B, L = input_ids.shape
 
-  if flat_images:
-    pixel_values = np.array(inputs['pixel_values'], dtype=np.float32)
-    image_grid_thw = np.array(
+  if images:
+    pixel_values = jnp.array(inputs['pixel_values'], dtype=np.float32)
+    image_grid_thw = jnp.array(
         inputs['image_grid_thw'], dtype=np.int32
     )  # [N, 3]
   else:
     pixel_values = None
     image_grid_thw = None
 
-  # Compute 3-D M-RoPE positions per item.  get_rope_index is not batched
-  # (items can have different image counts) so we iterate here.
-  out_positions = np.zeros((3, B, L), dtype=np.int32)
-  thw_offset = 0
-  for i, imgs in enumerate(images):
-    n_imgs = len(imgs)
-    item_thw = (
-        jnp.array(image_grid_thw[thw_offset : thw_offset + n_imgs])
-        if n_imgs > 0
-        else None
-    )
-    thw_offset += n_imgs
-    seq_len = int(attn_mask[i].sum())
-    positions_3d, _ = get_rope_index(
-        input_ids=jnp.array(input_ids[i : i + 1, :seq_len]),
-        image_grid_thw=item_thw,
-        video_grid_thw=None,
-        attention_mask=jnp.array(attn_mask[i : i + 1, :seq_len]),
-        spatial_merge_size=vcfg.spatial_merge_size,
-        image_token_id=vcfg.image_pad_id,
-        video_token_id=_VIDEO_TOKEN_ID,
-        vision_start_token_id=_VISION_START_TOKEN_ID,
-    )
-    out_positions[:, i, :seq_len] = np.array(
-        positions_3d[:, 0, :], dtype=np.int32
-    )
-
-  input_mask = ~attn_mask.astype(bool)  # True at padding positions
-
-  if completion_mask is not None:
-    # Extend or truncate to match the actual padded length L.
-    out_comp_mask = np.zeros((B, L), dtype=bool)
-    clip = min(completion_mask.shape[1], L)
-    out_comp_mask[:, :clip] = completion_mask[:, :clip]
-  else:
-    out_comp_mask = np.zeros((B, L), dtype=bool)
+  positions, _ = get_rope_index(
+      input_ids=input_ids,
+      image_grid_thw=image_grid_thw,
+      video_grid_thw=None,
+      input_mask=input_mask,
+      spatial_merge_size=vcfg.spatial_merge_size,
+      image_token_id=vcfg.image_pad_id,
+      video_token_id=_VIDEO_TOKEN_ID,
+      vision_start_token_id=_VISION_START_TOKEN_ID,
+  )  # [3, B, L]
+  # positions = np.array(positions, dtype=np.int32)  # [3, B, L]
 
   return EncodedBatch(
       input_tokens=input_ids,
       input_mask=input_mask,
-      completion_mask=out_comp_mask,
-      positions=out_positions,
+      completion_mask=np.zeros((B, L), dtype=bool),
+      positions=positions,
       pixel_values=pixel_values,
       image_grid_thw=image_grid_thw,
   )
@@ -243,7 +214,7 @@ def encode_messages(
       [np.pad(m, (0, max(0, max_seq_len - len(m)))) for m in comp_masks]
   )  # [B, max_seq_len]
 
-  return encode_batch(
+  batch = encode_batch(
       processor,
       texts,
       all_images,
@@ -252,5 +223,10 @@ def encode_messages(
       padding=padding,
       truncation=truncation,
       pad_to_multiple_of=pad_to_multiple_of,
-      completion_mask=completion_mask,
   )
+  B, L = batch.input_tokens.shape
+  out_comp_mask = np.zeros((B, L), dtype=bool)
+  clip = min(completion_mask.shape[1], L)
+  out_comp_mask[:, :clip] = completion_mask[:, :clip]
+  batch.completion_mask = out_comp_mask
+  return batch
