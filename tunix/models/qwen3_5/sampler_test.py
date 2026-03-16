@@ -22,13 +22,13 @@ Usage::
     # Text-only (greedy):
     python -m tunix.models.qwen3_5.sampler_test \\
         --model_id_or_dir Qwen/Qwen3.5-0.8B \\
-        --prompt "The capital of France is"
+        --prompt "<|im_start|>user\nWhat is the capital of France?<|im_end|>\n<|im_start|>assistant\n"
 
     # With an image (top-p):
     python -m tunix.models.qwen3_5.sampler_test \\
         --model_id_or_dir Qwen/Qwen3.5-0.8B \\
-        --prompt "Describe the image." \\
-        --image_url /path/to/image.jpg \\
+        --prompt "<|im_start|>user\nWhat is in the image?<|im_end|>\n<|im_start|>assistant\n" \\
+        --image_url https://fastly.picsum.photos/id/100/300/200.jpg?hmac=ONiK6jtlF-h6EIOqhPFFyhyjF3SFqQ10MYWslZmlNyI \\
         --top_p 0.9 --temperature 0.7
 """
 
@@ -53,7 +53,7 @@ from tunix.models.qwen3_5 import model as model_lib
 from tunix.models.qwen3_5 import params as params_lib
 from tunix.models.qwen3_5.consistency_test import _config_from_model_id
 from tunix.models.qwen3_5.consistency_test import resolve_model_dir
-from tunix.models.qwen3vl.model import get_rope_index
+from tunix.models.qwen3_5.utils import encode_batch
 
 # ---------------------------------------------------------------------------
 # Sampling state
@@ -180,44 +180,6 @@ class Qwen3_5Sampler:
 
     return input_ids, attention_mask
 
-  def _prepare_vision_inputs(
-      self,
-      prompts: Sequence[str],
-      images: Sequence,
-  ) -> dict:
-    """Run AutoProcessor on text + images and return PT-style batch dict."""
-    if self._processor is None:
-      raise ValueError(
-          'An AutoProcessor is required for vision inputs.'
-          ' Pass one to Qwen3_5Sampler.__init__.'
-      )
-    messages_batch = [
-        [{
-            'role': 'user',
-            'content': [
-                {
-                    'type': 'image',
-                    'image': '',
-                },  # placeholder; image passed below
-                {'type': 'text', 'text': p},
-            ],
-        }]
-        for p in prompts
-    ]
-    texts = [
-        self._processor.apply_chat_template(
-            m, tokenize=False, add_generation_prompt=True
-        )
-        for m in messages_batch
-    ]
-    batch = self._processor(
-        text=texts,
-        images=list(images),
-        return_tensors='pt',
-        padding=True,
-    )
-    return {k: v.numpy() for k, v in batch.items()}
-
   # ------------------------------------------------------------------
   # Prefill
   # ------------------------------------------------------------------
@@ -226,6 +188,7 @@ class Qwen3_5Sampler:
       self,
       input_ids: np.ndarray,  # [B, L]
       attention_mask: np.ndarray,  # [B, L]
+      positions_3d: jax.Array,  # [3, B, L]
       total_sampling_steps: int,
       image_grid_thw: np.ndarray | None,
       pixel_values: np.ndarray | None,
@@ -240,27 +203,8 @@ class Qwen3_5Sampler:
     """Run the prefill pass and initialise the sampling state."""
     batch_size, seq_len = input_ids.shape
 
-    # --- 3D M-RoPE positions ---
     input_ids_jax = jnp.array(input_ids)
     attn_mask_jax = jnp.array(attention_mask)
-
-    if image_grid_thw is not None:
-      cfg = self._config.vision_config
-      positions_3d, _ = get_rope_index(
-          input_ids=input_ids_jax,
-          image_grid_thw=jnp.array(image_grid_thw),
-          video_grid_thw=None,
-          input_mask=attn_mask_jax,
-          spatial_merge_size=cfg.spatial_merge_size,
-          image_token_id=cfg.image_pad_id,
-          video_token_id=cfg.image_pad_id + 1,  # unused
-          vision_start_token_id=248053,
-      )
-    else:
-      # Text-only: all three axes get the same sequential positions.
-      positions_1d = jnp.cumsum(attn_mask_jax, axis=-1) - 1
-      positions_1d = jnp.where(attn_mask_jax, positions_1d, 0)
-      positions_3d = jnp.stack([positions_1d] * 3, axis=0)  # [3, B, L]
 
     # --- Vision grid data ---
     vision_precomputed = None
@@ -511,17 +455,49 @@ class Qwen3_5Sampler:
 
     # --- Prepare inputs ---
     if images is not None:
+      if self._processor is None:
+        raise ValueError(
+            'An AutoProcessor is required for vision inputs.'
+            ' Pass one to Qwen3_5Sampler.__init__.'
+        )
       if not isinstance(images, (list, tuple)):
         images = [images] * len(prompts)
-      batch = self._prepare_vision_inputs(prompts, images)
-      input_ids = batch['input_ids'].astype(np.int32)
-      attention_mask = batch['attention_mask'].astype(np.int32)
-      pixel_values = np.array(batch['pixel_values'])
-      image_grid_thw = np.array(batch['image_grid_thw'])
+      messages_batch = [
+          [{
+              'role': 'user',
+              'content': [
+                  {'type': 'image', 'image': ''},
+                  {'type': 'text', 'text': p},
+              ],
+          }]
+          for p in prompts
+      ]
+      texts = [
+          self._processor.apply_chat_template(
+              m, tokenize=False, add_generation_prompt=True
+          )
+          for m in messages_batch
+      ]
+      batch = encode_batch(
+          self._processor,
+          texts,
+          [[img] for img in images],
+          max_seq_len=self._cache_size,
+          vcfg=self._config.vision_config,
+      )
+      input_ids = np.array(batch.input_tokens)
+      attention_mask = np.array(batch.input_mask)
+      pixel_values = batch.pixel_values
+      image_grid_thw = batch.image_grid_thw
+      positions_3d = jnp.array(batch.positions)
     else:
       input_ids, attention_mask = self._prepare_text_inputs(prompts)
       pixel_values = None
       image_grid_thw = None
+      attn = jnp.array(attention_mask)
+      positions_1d = jnp.cumsum(attn, axis=-1) - 1
+      positions_1d = jnp.where(attn, positions_1d, 0)
+      positions_3d = jnp.stack([positions_1d] * 3, axis=0)  # [3, B, L]
 
     seq_len = input_ids.shape[1]
     total_sampling_steps = seq_len + max_new_tokens
@@ -535,6 +511,7 @@ class Qwen3_5Sampler:
     state = self._prefill(
         input_ids=input_ids,
         attention_mask=attention_mask,
+        positions_3d=positions_3d,
         total_sampling_steps=total_sampling_steps,
         image_grid_thw=image_grid_thw,
         pixel_values=pixel_values,
