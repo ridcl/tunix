@@ -16,22 +16,22 @@
 
 from __future__ import annotations
 
-import dataclasses
 from typing import Any
 
+from flax import struct
 import jax.numpy as jnp
 import numpy as np
 from transformers import AutoProcessor
 from tunix.models.qwen3_5 import model as model_lib
 from tunix.models.qwen3vl.model import get_rope_index
 
-# Special token IDs (constant for all Qwen3.5 VL checkpoints).
+# Special token IDs (constant for all Qwen3.5 checkpoints).
 _VISION_START_TOKEN_ID = 248053
 _VIDEO_TOKEN_ID = 248057
 
 
-@dataclasses.dataclass
-class EncodedBatch:
+@struct.dataclass
+class EncodedBatch:  # TODO: decide on numpy vs jax arrays, adjust encoders
   """Output of encode_batch / encode_messages.
 
   All arrays are numpy.  B = batch size, L = max sequence length,
@@ -61,7 +61,7 @@ def encode_batch(
     texts: list[str],
     images: list[list[Any]],
     *,
-    max_seq_len: int,
+    max_length: int,
     vcfg: model_lib.VisionModelConfig,
     padding: bool | str = True,
     truncation: bool | str = True,
@@ -77,9 +77,9 @@ def encode_batch(
     processor: HuggingFace AutoProcessor for Qwen3.5-VL.
     texts: List of B formatted prompt strings.
     images: List of B image lists (each inner list may be empty).
-    max_seq_len: Maximum sequence length; longer sequences are truncated.
+    max_length: Maximum sequence length; longer sequences are truncated.
     vcfg: VisionModelConfig for the model (used to compute M-RoPE positions).
-    padding: Passed to the processor (e.g. True, 'max_length').
+    padding: Passed to the processor (e.g. True, "max_length").
     truncation: Passed to the processor.
     pad_to_multiple_of: If set, pad sequence length to the next multiple.
 
@@ -89,20 +89,19 @@ def encode_batch(
   inputs = processor(
       text=texts,
       images=images,
-      max_length=max_seq_len,
+      max_length=max_length,
       padding=padding,
       truncation=truncation,
       pad_to_multiple_of=pad_to_multiple_of,
   )
 
-  input_ids = jnp.array(inputs['input_ids'], dtype=np.int32)  # [B, L]
-  input_mask = jnp.array(inputs['attention_mask'], dtype=np.int32)  # [B, L]
-  B, L = input_ids.shape
+  input_ids = jnp.array(inputs["input_ids"], dtype=np.int32)  # [B, L]
+  input_mask = jnp.array(inputs["attention_mask"], dtype=np.int32)  # [B, L]
 
   if images:
-    pixel_values = jnp.array(inputs['pixel_values'], dtype=np.float32)
+    pixel_values = jnp.array(inputs["pixel_values"], dtype=np.float32)
     image_grid_thw = jnp.array(
-        inputs['image_grid_thw'], dtype=np.int32
+        inputs["image_grid_thw"], dtype=np.int32
     )  # [N, 3]
   else:
     pixel_values = None
@@ -123,7 +122,7 @@ def encode_batch(
   return EncodedBatch(
       input_tokens=input_ids,
       input_mask=input_mask,
-      completion_mask=np.zeros((B, L), dtype=bool),
+      completion_mask=np.zeros(input_ids.shape, dtype=bool),
       positions=positions,
       pixel_values=pixel_values,
       image_grid_thw=image_grid_thw,
@@ -148,7 +147,7 @@ def encode_messages(
     conversations: List of B conversations, each a list of message dicts with
       keys ``role`` (str) and ``content`` (str or list of content blocks).
     loss_roles: Set of role names whose tokens are included in the loss (e.g.
-      ``{'assistant'}``).  Tokens from all other roles are masked out.
+      ``{"assistant"}``).  Tokens from all other roles are masked out.
     max_seq_len: Maximum sequence length; longer sequences are truncated.
     vcfg: VisionModelConfig for the model.
     padding: Passed to the processor.
@@ -156,7 +155,7 @@ def encode_messages(
     pad_to_multiple_of: If set, pad sequence length to the next multiple.
 
   Returns:
-    EncodedBatch.
+    EncodedBatch
   """
   comp_masks: list[np.ndarray] = []
   texts: list[str] = []
@@ -166,11 +165,11 @@ def encode_messages(
     # Collect images from all messages in this conversation.
     images: list[Any] = []
     for msg in conv:
-      content = msg.get('content', '')
+      content = msg.get("content", "")
       if isinstance(content, list):
         for block in content:
-          if isinstance(block, dict) and block.get('type') == 'image':
-            img = block.get('image')
+          if isinstance(block, dict) and block.get("type") == "image":
+            img = block.get("image")
             if img is not None:
               images.append(img)
 
@@ -185,7 +184,7 @@ def encode_messages(
     # message i.
     mask = np.zeros(len(full_ids), dtype=bool)
     for idx, msg in enumerate(conv):
-      if msg['role'] not in loss_roles:
+      if msg["role"] not in loss_roles:
         continue
       prefix_ids = processor.tokenizer.encode(
           processor.apply_chat_template(
@@ -214,7 +213,7 @@ def encode_messages(
       processor,
       texts,
       all_images,
-      max_seq_len=max_seq_len,
+      max_length=max_seq_len,
       vcfg=vcfg,
       padding=padding,
       truncation=truncation,

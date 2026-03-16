@@ -482,7 +482,7 @@ class Qwen3_5Sampler:
           self._processor,
           texts,
           [[img] for img in images],
-          max_seq_len=self._cache_size,
+          max_length=self._cache_size,
           vcfg=self._config.vision_config,
       )
       input_ids = np.array(batch.input_tokens)
