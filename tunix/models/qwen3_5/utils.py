@@ -84,10 +84,7 @@ def encode_batch(
     pad_to_multiple_of: If set, pad sequence length to the next multiple.
 
   Returns:
-    EncodedBatch with completion_mask all-False.  Use encode_messages to get a
-    mask populated by role.  pixel_values is [P, C] with all patches
-    concatenated; image_grid_thw is [N, 3] with one row per image across the
-    whole batch.  Both are None when the batch contains no images.
+    EncodedBatch
   """
   inputs = processor(
       text=texts,
@@ -159,8 +156,7 @@ def encode_messages(
     pad_to_multiple_of: If set, pad sequence length to the next multiple.
 
   Returns:
-    EncodedBatch where completion_mask is True at tokens belonging to any role
-    in loss_roles (determined by prefix-length differencing).
+    EncodedBatch.
   """
   comp_masks: list[np.ndarray] = []
   texts: list[str] = []
