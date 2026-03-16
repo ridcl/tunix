@@ -82,7 +82,7 @@ class ModelConfig:
   num_kv_heads: int
   rope_theta: int
   norm_eps: float
-  # Hybrid layer types: list of 'full_attention' | 'linear_attention'.
+  # Hybrid layer types: list of "full_attention" | "linear_attention".
   # Default pattern: every 4th layer is full attention.
   layer_types: list[str]
   # Partial RoPE: fraction of each head dimension that receives rotation.
@@ -116,7 +116,7 @@ class ModelConfig:
         partial_rotary_factor=0.25,
         mrope_section=(11, 11, 10),
         layer_types=[
-            'linear_attention' if bool((i + 1) % 4) else 'full_attention'
+            "linear_attention" if bool((i + 1) % 4) else "full_attention"
             for i in range(32)
         ],
         linear_conv_kernel_dim=4,
@@ -142,7 +142,7 @@ class ModelConfig:
         mrope_section=(11, 11, 10),
         use_tied_embedding=True,
         layer_types=[
-            'linear_attention' if bool((i + 1) % 4) else 'full_attention'
+            "linear_attention" if bool((i + 1) % 4) else "full_attention"
             for i in range(24)
         ],
         linear_conv_kernel_dim=4,
@@ -168,7 +168,7 @@ class ModelConfig:
         mrope_section=(11, 11, 10),
         use_tied_embedding=True,
         layer_types=[
-            'linear_attention' if bool((i + 1) % 4) else 'full_attention'
+            "linear_attention" if bool((i + 1) % 4) else "full_attention"
             for i in range(32)
         ],
         linear_conv_kernel_dim=4,
@@ -271,7 +271,7 @@ class RMSNorm(nnx.Module):
     )
     self.norm_eps = norm_eps
 
-  @jax.named_scope('rms_norm')
+  @jax.named_scope("rms_norm")
   def __call__(self, x: jaxtyping.Array) -> jaxtyping.Array:
     dtype = x.dtype
     x_f32 = x.astype(jnp.float32)
@@ -302,7 +302,7 @@ class RMSNormGated(nnx.Module):
     )
     self.norm_eps = norm_eps
 
-  @jax.named_scope('rms_norm_gated')
+  @jax.named_scope("rms_norm_gated")
   def __call__(
       self, x: jaxtyping.Array, gate: jaxtyping.Array
   ) -> jaxtyping.Array:
@@ -455,12 +455,12 @@ def _gated_delta_rule(
     state_f = state.astype(jnp.float32)
     decay = jnp.exp(g_t)[:, :, jnp.newaxis, jnp.newaxis]  # [B, H, 1, 1]
     state_f = state_f * decay
-    kv_mem = jnp.einsum('bhd,bhde->bhe', k_t.astype(jnp.float32), state_f)
+    kv_mem = jnp.einsum("bhd,bhde->bhe", k_t.astype(jnp.float32), state_f)
     delta = (v_t.astype(jnp.float32) - kv_mem) * b_t[:, :, jnp.newaxis]
     state_f = state_f + jnp.einsum(
-        'bhd,bhe->bhde', k_t.astype(jnp.float32), delta
+        "bhd,bhe->bhde", k_t.astype(jnp.float32), delta
     )
-    out_t = jnp.einsum('bhd,bhde->bhe', q_t.astype(jnp.float32), state_f)
+    out_t = jnp.einsum("bhd,bhde->bhe", q_t.astype(jnp.float32), state_f)
     return state_f.astype(carry_dtype), out_t.astype(carry_dtype)
 
   # Transpose time to leading axis for scan: [T, B, H, *].
@@ -491,7 +491,7 @@ class Attention(nnx.Module):
 
   def __init__(
       self,
-      config: 'ModelConfig',
+      config: "ModelConfig",
       *,
       rngs: nnx.Rngs,
       param_dtype: jnp.dtype = jnp.bfloat16,
@@ -500,28 +500,28 @@ class Attention(nnx.Module):
     self.shd_config = config.shd_config
     # q_proj is 2× head_dim: first half → query, second half → gate.
     self.q_proj = Einsum(
-        einsum_str='BTD,DNH->BTNH',
+        einsum_str="BTD,DNH->BTNH",
         shape=(config.embed_dim, config.num_heads, config.head_dim * 2),
         rngs=rngs,
         sharding=self.shd_config.q_weight_dnh,
         param_dtype=param_dtype,
     )
     self.k_proj = Einsum(
-        einsum_str='BSD,DKH->BSKH',
+        einsum_str="BSD,DKH->BSKH",
         shape=(config.embed_dim, config.num_kv_heads, config.head_dim),
         rngs=rngs,
         sharding=self.shd_config.kv_weight_dnh,
         param_dtype=param_dtype,
     )
     self.v_proj = Einsum(
-        einsum_str='BSD,DKH->BSKH',
+        einsum_str="BSD,DKH->BSKH",
         shape=(config.embed_dim, config.num_kv_heads, config.head_dim),
         rngs=rngs,
         sharding=self.shd_config.kv_weight_dnh,
         param_dtype=param_dtype,
     )
     self.o_proj = Einsum(
-        einsum_str='BTNH,NHD->BTD',
+        einsum_str="BTNH,NHD->BTD",
         shape=(config.num_heads, config.head_dim, config.embed_dim),
         rngs=rngs,
         sharding=self.shd_config.o_weight_nhd,
@@ -588,13 +588,13 @@ class Attention(nnx.Module):
     )
 
     if cache is not None:
-      end_index = cache['end_index'][0]
-      slice_indices = (0, end_index % cache['v'].shape[1], 0, 0)
+      end_index = cache["end_index"][0]
+      slice_indices = (0, end_index % cache["v"].shape[1], 0, 0)
       value_proj = jax.lax.dynamic_update_slice(
-          cache['v'], value_proj, slice_indices
+          cache["v"], value_proj, slice_indices
       )
       key_proj = jax.lax.dynamic_update_slice(
-          cache['k'], key_proj, slice_indices
+          cache["k"], key_proj, slice_indices
       )
 
     b, t, qh, d = query_proj.shape
@@ -602,7 +602,7 @@ class Attention(nnx.Module):
 
     # GQA
     query_proj = query_proj.reshape((b, t, kh, qh // kh, d))
-    attn = jnp.einsum('BTHGD,BSHD->BHGTS', query_proj, key_proj) * self.scale
+    attn = jnp.einsum("BTHGD,BSHD->BHGTS", query_proj, key_proj) * self.scale
     attn = attn.reshape((b, qh, t, s))
 
     if attn_mask is not None:
@@ -613,7 +613,7 @@ class Attention(nnx.Module):
     )
 
     attn = attn.reshape((b, kh, qh // kh, t, s))
-    qkv = jnp.einsum('BHGTS,BSHD->BTHGD', attn, value_proj)
+    qkv = jnp.einsum("BHGTS,BSHD->BTHGD", attn, value_proj)
     qkv = qkv.reshape((b, t, qh, d))
 
     # Apply sigmoid gate before o_proj (gate has same shape as qkv).
@@ -624,16 +624,16 @@ class Attention(nnx.Module):
 
     if cache is not None:
       new_cache: LayerCache | None = {
-          'v': value_proj,
-          'k': key_proj,
-          'end_index': cache['end_index'] + seq_len,
+          "v": value_proj,
+          "k": key_proj,
+          "end_index": cache["end_index"] + seq_len,
       }
     else:
       new_cache = None
 
     return new_cache, outputs
 
-  @jax.named_scope('attention')
+  @jax.named_scope("attention")
   def __call__(
       self,
       x: jaxtyping.Array,
@@ -669,7 +669,7 @@ class GatedDeltaNet(nnx.Module):
 
   def __init__(
       self,
-      config: 'ModelConfig',
+      config: "ModelConfig",
       *,
       rngs: nnx.Rngs,
       param_dtype: jnp.dtype = jnp.bfloat16,
@@ -748,7 +748,7 @@ class GatedDeltaNet(nnx.Module):
         param_dtype=param_dtype,
     )
 
-  @jax.named_scope('gated_delta_net')
+  @jax.named_scope("gated_delta_net")
   def __call__(
       self,
       x: jaxtyping.Array,  # [B, T, D]
@@ -770,14 +770,14 @@ class GatedDeltaNet(nnx.Module):
 
     if cache is not None and T == 1:
       # ── Decode (single-step) path ──────────────────────────────────────────
-      conv_state = cache['conv_state']  # [B, K-1, conv_dim]
-      recurrent_state = cache['recurrent_state']  # [B, H, Dk, Dv]
+      conv_state = cache["conv_state"]  # [B, K-1, conv_dim]
+      recurrent_state = cache["recurrent_state"]  # [B, H, Dk, Dv]
       mixed_qkv, new_conv_state = _causal_conv1d_update(
           mixed_qkv, conv_state, weight
       )
       new_cache: LayerCache | None = {
-          'conv_state': new_conv_state,
-          'recurrent_state': None,  # filled below
+          "conv_state": new_conv_state,
+          "recurrent_state": None,  # filled below
       }
     else:
       # ── Prefill path ──────────────────────────────────────────────────────
@@ -789,8 +789,8 @@ class GatedDeltaNet(nnx.Module):
       if cache is not None:
         new_conv_state = mixed_qkv[:, -(self.conv_kernel_size - 1) :, :]
         new_cache = {
-            'conv_state': new_conv_state,
-            'recurrent_state': None,  # filled below
+            "conv_state": new_conv_state,
+            "recurrent_state": None,  # filled below
         }
       else:
         new_cache = None
@@ -822,7 +822,7 @@ class GatedDeltaNet(nnx.Module):
 
     # Update recurrent state in cache.
     if new_cache is not None:
-      new_cache['recurrent_state'] = final_state
+      new_cache["recurrent_state"] = final_state
 
     # Gated norm.
     z_heads = z.reshape(B, T, self.num_v_heads, self.head_v_dim)
@@ -845,7 +845,7 @@ class MLP(nnx.Module):
 
   def __init__(
       self,
-      config: 'ModelConfig',
+      config: "ModelConfig",
       *,
       rngs: nnx.Rngs,
       param_dtype: jnp.dtype = jnp.bfloat16,
@@ -883,7 +883,7 @@ class MLP(nnx.Module):
         param_dtype=param_dtype,
     )
 
-  @jax.named_scope('feed_forward')
+  @jax.named_scope("feed_forward")
   def __call__(self, x: jaxtyping.ArrayLike) -> jaxtyping.Array:
     activations = nnx.silu(self.gate_proj(x)) * self.up_proj(x)
     activations = shard(activations, self.shd_config.act_btf)
@@ -900,13 +900,13 @@ class DecoderLayer(nnx.Module):
 
   def __init__(
       self,
-      config: 'ModelConfig',
+      config: "ModelConfig",
       layer_type: str,
       *,
       rngs: nnx.Rngs,
       shd_config: ShardingConfig = ShardingConfig.get_default_sharding(),
   ):
-    assert layer_type in ('full_attention', 'linear_attention')
+    assert layer_type in ("full_attention", "linear_attention")
     self.layer_type = layer_type
     self.input_layernorm = RMSNorm(
         config.embed_dim,
@@ -915,7 +915,7 @@ class DecoderLayer(nnx.Module):
         shd_config=shd_config,
         param_dtype=config.param_dtype,
     )
-    if layer_type == 'full_attention':
+    if layer_type == "full_attention":
       self.token_mixer: Attention | GatedDeltaNet = Attention(
           config=config,
           rngs=rngs,
@@ -950,7 +950,7 @@ class DecoderLayer(nnx.Module):
   ) -> tuple[LayerCache | None, jaxtyping.Array]:
     inputs_normalized = self.input_layernorm(x)
 
-    if self.layer_type == 'full_attention':
+    if self.layer_type == "full_attention":
       new_cache, token_output = self.token_mixer(
           inputs_normalized, segment_pos, cache, attn_mask
       )
@@ -1007,7 +1007,7 @@ class Qwen3_5(BackendMappingMixin, nnx.Module):
     )
     if not config.use_tied_embedding:
       self.lm_head = Einsum(
-          einsum_str='BTD,DV->BTV',
+          einsum_str="BTD,DV->BTV",
           shape=(config.embed_dim, config.vocab_size),
           rngs=rngs,
           sharding=shd_config.emb_dv,
@@ -1030,13 +1030,13 @@ class Qwen3_5(BackendMappingMixin, nnx.Module):
     config = self.config
     cache: Cache = {}
     for i, layer_type in enumerate(config.layer_types):
-      name = f'layer_{i}'
-      if layer_type == 'full_attention':
+      name = f"layer_{i}"
+      if layer_type == "full_attention":
         shape = (batch_size, cache_size, config.num_kv_heads, config.head_dim)
         cache[name] = {
-            'k': jnp.zeros(shape, dtype=dtype),
-            'v': jnp.zeros(shape, dtype=dtype),
-            'end_index': jnp.zeros((batch_size,), dtype=jnp.int32),
+            "k": jnp.zeros(shape, dtype=dtype),
+            "v": jnp.zeros(shape, dtype=dtype),
+            "end_index": jnp.zeros((batch_size,), dtype=jnp.int32),
         }
       else:  # linear_attention
         conv_dim = (
@@ -1044,11 +1044,11 @@ class Qwen3_5(BackendMappingMixin, nnx.Module):
             + config.linear_num_value_heads * config.linear_value_head_dim
         )
         cache[name] = {
-            'conv_state': jnp.zeros(
+            "conv_state": jnp.zeros(
                 (batch_size, config.linear_conv_kernel_dim - 1, conv_dim),
                 dtype=dtype,
             ),
-            'recurrent_state': jnp.zeros(
+            "recurrent_state": jnp.zeros(
                 (
                     batch_size,
                     config.linear_num_value_heads,
@@ -1069,7 +1069,7 @@ class Qwen3_5(BackendMappingMixin, nnx.Module):
       input_tokens: jaxtyping.Array,  # [B, L]
       positions: jaxtyping.Array,  # [3, B, L]  3D M-RoPE
       pixel_values: jaxtyping.Array | None,
-      vision_precomputed: VisionGridData | None,
+      vision_grid: VisionGridData | None,
       cache: Cache | None,
       padding_mask: jaxtyping.Array | None,  # [B, L] padding (1=real, 0=pad)
       output_hidden_states: bool = False,
@@ -1081,9 +1081,9 @@ class Qwen3_5(BackendMappingMixin, nnx.Module):
       positions: 3D M-RoPE position ids [3, B, L] from ``get_rope_index``.
         Row 0 is the text/temporal axis used for causal masking.
       pixel_values: Flat patch tokens [N_patches, patch_volume] or None.
-      vision_precomputed: Pre-computed vision grid data or None.
+      vision_grid: Pre-computed vision grid data or None.
       cache: Per-layer KV / recurrent state cache or None.
-      attention_mask: Padding mask [B, L] (1 = real, 0 = pad) or None.
+      padding_mask: Padding mask [B, L] (1 = real, 0 = pad) or None.
       output_hidden_states: If True, sow the final hidden states.
 
     Returns:
@@ -1110,9 +1110,9 @@ class Qwen3_5(BackendMappingMixin, nnx.Module):
     #     written (indices 0 … end_index, inclusive, because the attention
     #     block writes the current token *before* computing attention).
     if cache is not None:
-      first_attn_cache = next((v for v in cache.values() if 'k' in v), None)
+      first_attn_cache = next((v for v in cache.values() if "k" in v), None)
       if first_attn_cache is not None:
-        cache_size = first_attn_cache['k'].shape[1]
+        cache_size = first_attn_cache["k"].shape[1]
         seq_len_q = causal_mask.shape[1]
         if seq_len_q > 1:
           # Prefill: extend key dimension from seq_len to cache_size.
@@ -1121,7 +1121,7 @@ class Qwen3_5(BackendMappingMixin, nnx.Module):
             causal_mask = jnp.pad(causal_mask, ((0, 0), (0, 0), (0, pad)))
         else:
           # Decode: attend to all slots 0 … end_index (written before attn).
-          end_index = first_attn_cache['end_index'][0]
+          end_index = first_attn_cache["end_index"][0]
           valid = (
               jnp.arange(cache_size, dtype=jnp.int32)[None, None, :]
               <= end_index
@@ -1132,11 +1132,10 @@ class Qwen3_5(BackendMappingMixin, nnx.Module):
     # Inject vision tokens if present.
     if self.config.vision_config is not None and pixel_values is not None:
       image_pad_id = self.config.vision_config.image_pad_id
-      vision_embeds = self._encode_vision(pixel_values, vision_precomputed)
+      vision_embeds = self._encode_vision(pixel_values, vision_grid)
       vision_embeds = vision_embeds.cast(
           self.config.param_dtype
       ).with_batch_dim(bsz)
-      visual_mask = input_tokens == jnp.int32(image_pad_id)
 
       def _inject(h, tok, vis):
         num_vis = vis.shape[0]
@@ -1151,7 +1150,7 @@ class Qwen3_5(BackendMappingMixin, nnx.Module):
       x = jax.vmap(_inject)(x, input_tokens, vision_embeds.tokens)
 
     for i, layer in enumerate(self.layers):
-      layer_name = f'layer_{i}'
+      layer_name = f"layer_{i}"
       layer_cache = cache[layer_name] if cache else None
       layer_cache, x = layer(
           x,
@@ -1165,7 +1164,7 @@ class Qwen3_5(BackendMappingMixin, nnx.Module):
 
     x = self.final_norm(x)
     if output_hidden_states:
-      self.sow(nnx.Intermediate, 'all_hidden_states', x)
+      self.sow(nnx.Intermediate, "all_hidden_states", x)
 
     if self.config.use_tied_embedding:
       logits = self.embedder.decode(x)
@@ -1180,7 +1179,7 @@ class Qwen3_5(BackendMappingMixin, nnx.Module):
       precomputed: VisionGridData,
   ) -> VisionEmbeddings:
     if self.visual is None:
-      raise ValueError('Vision backbone not configured.')
+      raise ValueError("Vision backbone not configured.")
     tokens, deepstack = self.visual(pixel_values, precomputed)
     return VisionEmbeddings(tokens=tokens, deepstack=tuple(deepstack))
 
@@ -1188,16 +1187,16 @@ class Qwen3_5(BackendMappingMixin, nnx.Module):
     dummy_batch_size = 2
     dummy_seq_len = 1
     return {
-        'input_tokens': jnp.ones(
+        "input_tokens": jnp.ones(
             (dummy_batch_size, dummy_seq_len), dtype=jnp.int32
         ),
-        'positions': jnp.ones(
+        "positions": jnp.ones(
             (3, dummy_batch_size, dummy_seq_len), dtype=jnp.int32
         ),
-        'pixel_values': None,
-        'vision_precomputed': None,
-        'cache': None,
-        'attention_mask': jnp.ones(
+        "pixel_values": None,
+        "vision_grid": None,
+        "cache": None,
+        "padding_mask": jnp.ones(
             (dummy_batch_size, dummy_seq_len), dtype=jnp.bool_
         ),
     }
