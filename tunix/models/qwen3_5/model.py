@@ -31,23 +31,17 @@ New vs Qwen3-VL:
 """
 
 import dataclasses
-import enum
-from typing import Optional, Tuple
+from typing import Tuple
 
-import flax
 from flax import nnx
 import jax
 from jax import numpy as jnp
-from jax.interpreters import pxla
-import jax.sharding as shd
 import jaxtyping
-import numpy as np
 from tunix.generate.mappings import BackendMappingMixin
 # Re-use pure utilities from Qwen3-VL that do not depend on its ModelConfig.
 from tunix.models.qwen3vl.model import Cache
 from tunix.models.qwen3vl.model import Einsum
 from tunix.models.qwen3vl.model import Embedder
-from tunix.models.qwen3vl.model import get_rope_index
 from tunix.models.qwen3vl.model import K_MASK
 from tunix.models.qwen3vl.model import LayerCache
 from tunix.models.qwen3vl.model import make_causal_mask_from_positions
