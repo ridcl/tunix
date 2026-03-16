@@ -208,7 +208,7 @@ def get_rope_index(
     input_ids: jax.Array,  # [B, L]
     image_grid_thw: jax.Array | None,  # [N_images, 3]
     video_grid_thw: jax.Array | None,  # [N_videos, 3]
-    attention_mask: jax.Array | None,  # [B, L]
+    input_mask: jax.Array | None,  # [B, L]
     spatial_merge_size: int,
     image_token_id: int,
     video_token_id: int,
@@ -232,10 +232,8 @@ def get_rope_index(
     video_grid_thw[:, 0] = 1
 
   input_ids_np = np.array(input_ids)
-  attn_mask_np = (
-      np.ones_like(input_ids_np)
-      if attention_mask is None
-      else np.array(attention_mask)
+  input_mask_np = (
+      np.ones_like(input_ids_np) if input_mask is None else np.array(input_mask)
   )
 
   image_grid_np = (
@@ -252,7 +250,7 @@ def get_rope_index(
   image_index, video_index = 0, 0
 
   for i in range(B):
-    tokens = input_ids_np[i][attn_mask_np[i] == 1]  # [L_i]
+    tokens = input_ids_np[i][input_mask_np[i] == 1]  # [L_i]
     input_tokens = tokens.tolist()
 
     # Count images and videos in this sequence
@@ -341,7 +339,7 @@ def get_rope_index(
     llm_positions = np.concatenate(llm_pos_ids_list, axis=1)
 
     # Write into output, respecting the attention mask
-    valid_positions = np.where(attn_mask_np[i] == 1)[0]
+    valid_positions = np.where(input_mask_np[i] == 1)[0]
     position_ids[:, i, valid_positions] = llm_positions
 
     mrope_position_deltas.append(int(llm_positions.max()) + 1 - L)

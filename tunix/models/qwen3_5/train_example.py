@@ -213,7 +213,7 @@ class _ProcessItem(grain.MapTransform):
         input_ids=jnp.array(input_ids[None]),  # [1, L]
         image_grid_thw=jnp.array(image_grid_thw[None]),  # [1, 3]
         video_grid_thw=None,
-        attention_mask=jnp.array(attn_mask[None]),  # [1, L]
+        input_mask=jnp.array(attn_mask[None]),  # [1, L]
         spatial_merge_size=vcfg.spatial_merge_size,
         image_token_id=vcfg.image_pad_id,
         video_token_id=_VIDEO_TOKEN_ID,
