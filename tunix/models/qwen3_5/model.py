@@ -59,6 +59,32 @@ env_utils.setup_sharding_environment()
 
 
 # ---------------------------------------------------------------------------
+# Utilities
+# ---------------------------------------------------------------------------
+
+
+def qwix_friendly_scan(fn, init, xs, **kwargs):
+  """Like jax.lax.scan, but safe to call inside a QWIX-intercepted model.
+
+  QWIX sets ``jax_disable_jit=True`` globally while intercepting a model's
+  forward pass so that its ``dot_general`` code-object patch takes effect.
+  With JIT disabled, ``jax.lax.scan`` executes the body eagerly once per
+  element instead of tracing it once, which causes an O(seq_len) hang for
+  models that use scan in their decoder layers.  This wrapper temporarily
+  re-enables JIT around the scan call so that it always produces a compact
+  traced loop.
+  """
+  jit_was_disabled = jax.config.jax_disable_jit
+  if jit_was_disabled:
+    jax.config.update("jax_disable_jit", False)
+  try:
+    return jax.lax.scan(fn, init, xs, **kwargs)
+  finally:
+    if jit_was_disabled:
+      jax.config.update("jax_disable_jit", True)
+
+
+# ---------------------------------------------------------------------------
 # Model configuration
 # ---------------------------------------------------------------------------
 
@@ -94,31 +120,6 @@ class ModelConfig:
   remat_config: RematConfig = RematConfig.NONE
   param_dtype: jnp.dtype = jnp.bfloat16
   vision_config: VisionModelConfig | None = None
-
-  @classmethod
-  def qwen3_5_9b(cls):
-    return cls(
-        num_layers=32,
-        vocab_size=248320,
-        embed_dim=4096,
-        hidden_dim=12288,
-        num_heads=16,
-        head_dim=256,
-        num_kv_heads=4,
-        norm_eps=1e-06,
-        rope_theta=1_000_000,
-        partial_rotary_factor=0.25,
-        mrope_section=(11, 11, 10),
-        layer_types=[
-            "linear_attention" if bool((i + 1) % 4) else "full_attention"
-            for i in range(32)
-        ],
-        linear_conv_kernel_dim=4,
-        linear_key_head_dim=128,
-        linear_value_head_dim=128,
-        linear_num_key_heads=16,
-        linear_num_value_heads=32,
-    )
 
   @classmethod
   def qwen3_5_0p8b(cls):
@@ -173,8 +174,35 @@ class ModelConfig:
     )
 
   @classmethod
+  def qwen3_5_9b(cls):
+    return cls(
+        num_layers=32,
+        vocab_size=248320,
+        embed_dim=4096,
+        hidden_dim=12288,
+        num_heads=16,
+        head_dim=256,
+        num_kv_heads=4,
+        norm_eps=1e-06,
+        rope_theta=1_000_000,
+        partial_rotary_factor=0.25,
+        mrope_section=(11, 11, 10),
+        layer_types=[
+            "linear_attention" if bool((i + 1) % 4) else "full_attention"
+            for i in range(32)
+        ],
+        linear_conv_kernel_dim=4,
+        linear_key_head_dim=128,
+        linear_value_head_dim=128,
+        linear_num_key_heads=16,
+        linear_num_value_heads=32,
+    )
+
+  # TODO: Does it even make sense to load models without vision encoder?
+  # TODO: Does 0.8B model support vision encoder?
+  @classmethod
   def qwen3_5_0p8b_vl(cls):
-    """Qwen3.5-0.8B with vision encoder (no deepstack)."""
+    """Qwen3.5-0.8B with vision encoder."""
     cfg = cls.qwen3_5_0p8b()
     cfg.vision_config = VisionModelConfig(
         hidden_size=768,
@@ -196,7 +224,7 @@ class ModelConfig:
 
   @classmethod
   def qwen3_5_4b_vl(cls):
-    """Qwen3.5-4B with vision encoder (no deepstack)."""
+    """Qwen3.5-4B with vision encoder."""
     cfg = cls.qwen3_5_4b()
     cfg.vision_config = VisionModelConfig(
         hidden_size=1024,
@@ -218,7 +246,7 @@ class ModelConfig:
 
   @classmethod
   def qwen3_5_9b_vl(cls):
-    """Qwen3.5-9B with vision encoder (no deepstack)."""
+    """Qwen3.5-9B with vision encoder."""
     cfg = cls.qwen3_5_9b()
     cfg.vision_config = VisionModelConfig(
         hidden_size=1152,
@@ -322,7 +350,7 @@ def apply_rope(
     mrope_section: tuple[int, ...] = (11, 11, 10),
     partial_rotary_factor: float = 0.25,
 ) -> jaxtyping.Array:
-  """M-RoPE with optional partial rotation (Qwen3.5 style).
+  """M-RoPE with optional partial rotation.
 
   Only the first ``rotary_dim = head_dim * partial_rotary_factor`` dimensions
   of each head are rotated; the remaining dimensions pass through unchanged.
@@ -465,8 +493,8 @@ def _gated_delta_rule(
       jnp.moveaxis(g, 1, 0),
       jnp.moveaxis(beta, 1, 0),
   )
-  final_state, outputs = jax.lax.scan(step, initial_state, inputs)
-  # outputs: [T, B, H, Dv] → [B, T, H, Dv]
+  final_state, outputs = qwix_friendly_scan(step, initial_state, inputs)
+  # outputs: [T, B, H, Dv] -> [B, T, H, Dv]
   return jnp.moveaxis(outputs, 0, 1), final_state
 
 
@@ -478,7 +506,7 @@ def _gated_delta_rule(
 class Attention(nnx.Module):
   """Multi-head attention with a gated query projection.
 
-  The query projection is ``2 × num_heads × head_dim`` wide.  After splitting,
+  The query projection is ``2 x num_heads x head_dim`` wide.  After splitting,
   the second half forms a per-token sigmoid gate that scales the attention
   output before the output projection.
   """
@@ -492,7 +520,7 @@ class Attention(nnx.Module):
   ):
     self.config = config
     self.shd_config = config.shd_config
-    # q_proj is 2× head_dim: first half → query, second half → gate.
+    # q_proj is 2× head_dim: first half -> query, second half -> gate.
     self.q_proj = Einsum(
         einsum_str="BTD,DNH->BTNH",
         shape=(config.embed_dim, config.num_heads, config.head_dim * 2),
@@ -1065,7 +1093,7 @@ class Qwen3_5(BackendMappingMixin, nnx.Module):
       pixel_values: jaxtyping.Array | None,
       vision_grid: VisionGridData | None,
       cache: Cache | None,
-      padding_mask: jaxtyping.Array | None,  # [B, L] padding (1=real, 0=pad)
+      input_mask: jaxtyping.Array | None,  # [B, L] padding (1=real, 0=pad)
       output_hidden_states: bool = False,
   ) -> tuple[jaxtyping.Array, Cache | None]:
     """Forward pass.
@@ -1077,7 +1105,7 @@ class Qwen3_5(BackendMappingMixin, nnx.Module):
       pixel_values: Flat patch tokens [N_patches, patch_volume] or None.
       vision_grid: Pre-computed vision grid data or None.
       cache: Per-layer KV / recurrent state cache or None.
-      padding_mask: Padding mask [B, L] (1 = real, 0 = pad) or None.
+      input_mask: Padding mask [B, L] (1 = real, 0 = pad) or None.
       output_hidden_states: If True, sow the final hidden states.
 
     Returns:
@@ -1089,7 +1117,7 @@ class Qwen3_5(BackendMappingMixin, nnx.Module):
 
     # Build causal attention mask from the temporal M-RoPE axis.
     text_positions = positions[0]  # [B, L]
-    causal_mask = make_causal_mask_from_positions(text_positions, padding_mask)
+    causal_mask = make_causal_mask_from_positions(text_positions, input_mask)
 
     # When using a KV cache the key dimension equals cache_size, not seq_len.
     # The attention logit tensor has shape [B, heads, L_q, cache_size], so
@@ -1151,7 +1179,7 @@ class Qwen3_5(BackendMappingMixin, nnx.Module):
           positions,
           layer_cache,
           causal_mask,
-          padding_mask,
+          input_mask,
       )
       if cache is not None:
         new_cache[layer_name] = layer_cache  # pytype: disable=container-type-mismatch
@@ -1190,7 +1218,7 @@ class Qwen3_5(BackendMappingMixin, nnx.Module):
         "pixel_values": None,
         "vision_grid": None,
         "cache": None,
-        "padding_mask": jnp.ones(
+        "input_mask": jnp.ones(
             (dummy_batch_size, dummy_seq_len), dtype=jnp.bool_
         ),
     }
