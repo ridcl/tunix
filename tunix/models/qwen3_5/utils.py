@@ -24,6 +24,8 @@ import numpy as np
 from transformers import AutoProcessor
 from tunix.models.qwen3_5 import model as model_lib
 from tunix.models.qwen3vl.model import get_rope_index
+from tunix.models.qwen3vl.vision import compute_grid_data
+from tunix.models.qwen3vl.vision import VisionGridData
 
 # Special token IDs (constant for all Qwen3.5 checkpoints).
 _VISION_START_TOKEN_ID = 248053
@@ -31,21 +33,21 @@ _VIDEO_TOKEN_ID = 248057
 
 
 @struct.dataclass
-class EncodedBatch:  # TODO: decide on numpy vs jax arrays, adjust encoders
+class EncodedBatch:
   """Output of encode_batch / encode_messages.
 
-  All arrays are numpy.  B = batch size, L = max sequence length,
+  B = batch size, L = max sequence length,
   P = total patch tokens across all images in the batch, C = patch channels.
 
   Attributes:
-    input_tokens:    [B, L]    int32   — token ids (right-padded)
-    input_mask:      [B, L]    bool    — True at non-padding positions
-    completion_mask: [B, L]    bool    — True at tokens to include in loss
-    positions:       [3, B, L] int32   — 3-D M-RoPE positions
-    pixel_values:    [P, C]    float32 — patch tokens, all images concatenated
+    input_tokens:    [B, L]    int32      — token ids (right-padded)
+    input_mask:      [B, L]    bool       — True at non-padding positions
+    completion_mask: [B, L]    bool       — True at tokens to include in loss
+    positions:       [3, B, L] int32      — 3-D M-RoPE positions
+    pixel_values:    [P, C]    float32    — patch tokens, all images concatenated
                                (None if batch contains no images)
-    image_grid_thw:  [N, 3]    int32   — (T, H, W) per image across the batch
-                               (None if batch contains no images)
+    vision_grid:     VisionGridData       — pre-computed positional data for the
+                               visual encoder (None if no images)
   """
 
   input_tokens: np.ndarray  # [B, L]
@@ -53,7 +55,7 @@ class EncodedBatch:  # TODO: decide on numpy vs jax arrays, adjust encoders
   completion_mask: np.ndarray  # [B, L]
   positions: np.ndarray  # [3, B, L]
   pixel_values: np.ndarray | None  # [P, C]
-  image_grid_thw: np.ndarray | None  # [N, 3]
+  vision_grid: VisionGridData | None
 
 
 def encode_batch(
@@ -103,9 +105,11 @@ def encode_batch(
     image_grid_thw = jnp.array(
         inputs["image_grid_thw"], dtype=np.int32
     )  # [N, 3]
+    vision_grid = compute_grid_data(image_grid_thw, vcfg)
   else:
     pixel_values = None
     image_grid_thw = None
+    vision_grid = None
 
   positions, _ = get_rope_index(
       input_ids=input_ids,
@@ -117,7 +121,6 @@ def encode_batch(
       video_token_id=_VIDEO_TOKEN_ID,
       vision_start_token_id=_VISION_START_TOKEN_ID,
   )  # [3, B, L]
-  # positions = np.array(positions, dtype=np.int32)  # [3, B, L]
 
   return EncodedBatch(
       input_tokens=input_ids,
@@ -125,7 +128,7 @@ def encode_batch(
       completion_mask=np.zeros(input_ids.shape, dtype=bool),
       positions=positions,
       pixel_values=pixel_values,
-      image_grid_thw=image_grid_thw,
+      vision_grid=vision_grid,
   )
 
 
@@ -223,5 +226,11 @@ def encode_messages(
   out_comp_mask = np.zeros((B, L), dtype=bool)
   clip = min(completion_mask.shape[1], L)
   out_comp_mask[:, :clip] = completion_mask[:, :clip]
-  batch.completion_mask = out_comp_mask
-  return batch
+  return EncodedBatch(
+      input_tokens=batch.input_tokens,
+      input_mask=batch.input_mask,
+      completion_mask=out_comp_mask,
+      positions=batch.positions,
+      pixel_values=batch.pixel_values,
+      vision_grid=batch.vision_grid,
+  )
