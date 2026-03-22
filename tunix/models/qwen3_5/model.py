@@ -31,6 +31,7 @@ New vs Qwen3-VL:
 """
 
 import dataclasses
+import math
 from typing import Tuple
 
 from flax import nnx
@@ -485,6 +486,95 @@ def _gated_delta_rule(
     out_t = jnp.einsum("bhd,bhde->bhe", q_t.astype(jnp.float32), state_f)
     return state_f.astype(carry_dtype), out_t.astype(carry_dtype)
 
+  @jax.custom_vjp
+  def scan_sequence(init, xs):
+    """Run the gated delta rule scan; returns (final_state, outputs [T,B,H,Dv])."""
+    return qwix_friendly_scan(step, init, xs)
+
+  def scan_sequence_fwd(init, xs):
+    T = xs[0].shape[0]
+    C = max(1, int(math.ceil(T**0.5)))  # chunk size ≈ sqrt(T)
+    pad = (-T) % C
+    n_chunks = (T + pad) // C
+
+    xs_padded = xs
+    if pad > 0:
+      xs_padded = tuple(
+          jnp.concatenate([x, jnp.zeros((pad, *x.shape[1:]), x.dtype)], axis=0)
+          for x in xs
+      )
+
+    xs_chunked = tuple(x.reshape(n_chunks, C, *x.shape[1:]) for x in xs_padded)
+
+    def scan_chunk(state, xs_c):
+      checkpoint = state
+      new_state, ys_c = jax.lax.scan(step, state, xs_c)
+      return new_state, (ys_c, checkpoint)
+
+    final_state, (ys_chunked, checkpoints) = qwix_friendly_scan(
+        scan_chunk, init, xs_chunked
+    )
+
+    ys = ys_chunked.reshape(n_chunks * C, *ys_chunked.shape[2:])[:T]
+    return (final_state, ys), (xs_padded, checkpoints, final_state)
+
+  def scan_sequence_bwd(residuals, g_out):
+    xs_padded, checkpoints, final_state = residuals
+    d_final_state, d_outputs = g_out  # [B,H,Dk,Dv], [T,B,H,Dv]
+
+    T_orig = d_outputs.shape[0]
+    T_padded = xs_padded[0].shape[0]
+    n_chunks = checkpoints.shape[0]
+    C = T_padded // n_chunks
+
+    if T_padded > T_orig:
+      pad = T_padded - T_orig
+      d_outputs = jnp.concatenate(
+          [d_outputs, jnp.zeros((pad, *d_outputs.shape[1:]), d_outputs.dtype)],
+          axis=0,
+      )
+
+    xs_chunked = tuple(x.reshape(n_chunks, C, *x.shape[1:]) for x in xs_padded)
+    do_chunked = d_outputs.reshape(n_chunks, C, *d_outputs.shape[1:])
+
+    def chunk_bwd(d_state, chunk_data):
+      xs_c, do_c, checkpoint_c = chunk_data
+
+      def fwd_only(state, inputs_t):
+        new_state, _ = step(state, inputs_t)
+        return new_state, new_state
+
+      _, states_after = jax.lax.scan(fwd_only, checkpoint_c, xs_c)
+      states_before = jnp.concatenate(
+          [checkpoint_c[None], states_after[:-1]], axis=0
+      )
+
+      def bwd_step(d_s, data):
+        s_t, inputs_t, do_t = data
+        _, vjp_fn = jax.vjp(step, s_t, inputs_t)
+        d_s_new, d_inputs_t = vjp_fn((d_s, do_t))
+        return d_s_new, d_inputs_t
+
+      d_checkpoint, d_inputs_c = jax.lax.scan(
+          bwd_step, d_state, (states_before, xs_c, do_c), reverse=True
+      )
+      return d_checkpoint, d_inputs_c
+
+    d_init, d_inputs_chunked = jax.lax.scan(
+        chunk_bwd,
+        d_final_state,
+        (xs_chunked, do_chunked, checkpoints),
+        reverse=True,
+    )
+
+    d_inputs = tuple(
+        di.reshape(n_chunks * C, *di.shape[2:])[:T_orig]
+        for di in d_inputs_chunked
+    )
+    return d_init, d_inputs
+
+  scan_sequence.defvjp(scan_sequence_fwd, scan_sequence_bwd)
+
   # Transpose time to leading axis for scan: [T, B, H, *].
   inputs = (
       jnp.moveaxis(query, 1, 0),
@@ -493,7 +583,7 @@ def _gated_delta_rule(
       jnp.moveaxis(g, 1, 0),
       jnp.moveaxis(beta, 1, 0),
   )
-  final_state, outputs = qwix_friendly_scan(step, initial_state, inputs)
+  final_state, outputs = scan_sequence(initial_state, inputs)
   # outputs: [T, B, H, Dv] -> [B, T, H, Dv]
   return jnp.moveaxis(outputs, 0, 1), final_state
 
@@ -1129,7 +1219,7 @@ class Qwen3_5(BackendMappingMixin, nnx.Module):
     #   Decode   (L_q = 1): the position-based mask is [B, 1, 1] and zero-
     #     padding would incorrectly block all slots except position 0.
     #     Instead build a validity mask: attend to every slot that was already
-    #     written (indices 0 … end_index, inclusive, because the attention
+    #     written (indices 0...end_index, inclusive, because the attention
     #     block writes the current token *before* computing attention).
     if cache is not None:
       first_attn_cache = next((v for v in cache.values() if "k" in v), None)

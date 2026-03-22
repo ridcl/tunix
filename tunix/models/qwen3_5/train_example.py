@@ -56,6 +56,7 @@ from tunix.models.qwen3vl.vision import VisionGridData
 from tunix.rl import reshard as reshard_lib
 from tunix.sft import metrics_logger
 from tunix.sft import peft_trainer
+from tunix.sft.utils import show_hbm_usage
 
 logging.basicConfig(level=logging.INFO)
 logging.getLogger().setLevel(
@@ -70,7 +71,13 @@ logger = logging.getLogger(__name__)
 MODEL_ID = "Qwen/Qwen3.5-4B"
 
 BATCH_SIZE = 1
-MAX_SEQ_LEN = 4096
+MAX_SEQ_LEN = 2048
+# Vision encoder does full self-attention over all patches before spatial
+# merging.  At patch_size=16, a 2000×2000 image produces ~15K patches and
+# the float32 attention-score matrix [n_heads, n, n] hits ~14.6 GiB.
+# Cap images so n_patches stays within the available pool.
+# 1280 px → 80×80 = 6400 patches → [16, 6400, 6400] float32 ≈ 2.6 GiB.
+MAX_IMAGE_SIZE = 1280
 
 USE_QUANTIZATION = False  # True -> QLoRA, False -> LoRA
 LORA_RANK = 16
@@ -114,6 +121,8 @@ class _PrepareConversation(grain.MapTransform):
 
   def map(self, element: dict[str, Any]) -> dict[str, Any]:
     image = element["image"].convert("RGB")
+    if max(image.size) > MAX_IMAGE_SIZE:
+      image.thumbnail((MAX_IMAGE_SIZE, MAX_IMAGE_SIZE))
     conversation = [
         {
             "role": "user",
@@ -212,9 +221,9 @@ def _gen_model_input_fn(batch: EncodedBatch) -> dict:
   """Convert an EncodedBatch to model kwargs."""
   return {
       "input_tokens": jnp.array(batch.input_tokens),
-      "input_mask": jnp.array(batch.completion_mask),
+      "input_mask": jnp.array(batch.input_mask).astype(jnp.bool_),
+      "completion_mask": jnp.array(batch.completion_mask),
       "positions": jnp.array(batch.positions),
-      "attention_mask": jnp.array(batch.input_mask).astype(jnp.bool_),
       "pixel_values": jnp.array(batch.pixel_values, dtype=jnp.bfloat16),
       "vision_grid": batch.vision_grid,
   }
@@ -223,28 +232,33 @@ def _gen_model_input_fn(batch: EncodedBatch) -> dict:
 def loss_fn(
     model: model_lib.Qwen3_5,
     input_tokens: jax.Array,  # [B, L]
-    input_mask: jax.Array,  # [B, L]
+    input_mask: jax.Array,  # [B, L] — padding mask (1=real, 0=pad)
+    completion_mask: jax.Array,  # [B, L] — 1 for tokens to include in loss
     positions: jax.Array,  # [3, B, L]
-    # attention_mask: jax.Array,  # [B, L]
     pixel_values: jax.Array,  # [B*n_patches, C]
     vision_grid: VisionGridData,  # pre-computed outside JIT
 ) -> jax.Array:
   """Cross-entropy loss over answer tokens only."""
   logits, _ = model(
       input_tokens,
-      positions,
-      pixel_values,
-      vision_grid,
-      None,  # cache
-      input_mask,
+      positions=positions,
+      pixel_values=pixel_values,
+      vision_grid=vision_grid,
+      cache=None,
+      input_mask=input_mask,
   )
   # Shift by 1: predict token t+1 from the hidden state at position t.
-  logits = logits[:, :-1, :].astype(jnp.float32)  # [B, L-1, V]
+  # Keep logits in bfloat16 to avoid materialising a float32 [B, L, V] tensor
+  # (~2.4 GiB/GPU unsharded), which exhausts the memory pool during
+  # cross-entropy computation.  Cast only the small [B, L-1] per-token loss.
+  logits = logits[:, :-1, :]  # [B, L-1, V] bfloat16
   targets = input_tokens[:, 1:]  # [B, L-1]
-  mask = input_mask[:, 1:].astype(jnp.float32)  # [B, L-1]
+  mask = completion_mask[:, 1:].astype(jnp.float32)  # [B, L-1]
 
   token_loss = optax.softmax_cross_entropy_with_integer_labels(
       logits, targets
+  ).astype(
+      jnp.float32
   )  # [B, L-1]
   return jnp.sum(token_loss * mask) / jnp.sum(mask)
 
@@ -275,6 +289,7 @@ def get_lora_model(
   lora_model = qwix.apply_lora_to_model(
       base_model, lora_provider, **model_input
   )
+  # TODO: do we still need it?
   # Reshard LoRA params onto the mesh so XLA's SPMD partitioner gets explicit
   # sharding for every parameter.  Without this, QWIX-created LoRA params lack
   # NNX out_sharding metadata, leaving their placement ambiguous and causing
@@ -287,8 +302,6 @@ def get_lora_model(
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-
-from tunix.sft.utils import show_hbm_usage
 
 
 def main():
@@ -344,33 +357,11 @@ def main():
   trainer.loss_fn = loss_fn
   trainer.eval_loss_fn = loss_fn
 
-  from flax import nnx
-
-  graphdef, state = nnx.split(base_model)
-  lora_graphdef, lora_state = nnx.split(lora_model)
-
-  @jax.jit
-  def forward(state, **kwargs):
-    return nnx.merge(graphdef, state)(**kwargs)
-
-  @jax.jit
-  def compute_loss(state, **kwargs):
-    return loss_fn(nnx.merge(graphdef, state), **kwargs)
-
-  @jax.jit
-  def compute_loss_lora(state, **kwargs):
-    return loss_fn(nnx.merge(lora_graphdef, state), **kwargs)
-
-  x = _gen_model_input_fn(next(iter(train_ds)))
-  x["input_mask"] = x.pop("attention_mask")
+  logger.info("Starting %s training for %d steps", method, MAX_STEPS)
   with mesh:
-    # out = forward(state, **x)
-    # out = compute_loss(state, **x)
-    out = compute_loss_lora(lora_state, **x)
-
-    # logger.info("Starting %s training for %d steps", method, MAX_STEPS)
+    trainer.train(train_ds, eval_ds=None)
     # trainer.train(train_ds, eval_ds)
-  # logger.info("Training complete. Checkpoints saved to %s", LORA_CKPT_DIR)
+  logger.info("Training complete. Checkpoints saved to %s", LORA_CKPT_DIR)
 
 
 if __name__ == "__main__" and "__file__" in globals():
