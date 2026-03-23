@@ -41,6 +41,7 @@ import os
 from typing import Any
 
 import datasets
+from flax import nnx
 from grain import python as grain
 import huggingface_hub
 import jax
@@ -289,13 +290,24 @@ def get_lora_model(
   lora_model = qwix.apply_lora_to_model(
       base_model, lora_provider, **model_input
   )
-  # TODO: do we still need it?
-  # Reshard LoRA params onto the mesh so XLA's SPMD partitioner gets explicit
-  # sharding for every parameter.  Without this, QWIX-created LoRA params lack
-  # NNX out_sharding metadata, leaving their placement ambiguous and causing
-  # extremely long XLA compilation with TP sharding.
+  # Reshard every parameter (including freshly-added LoRA params) onto the mesh.
+  # reshard_model_to_mesh skips when base-model params are already on the mesh,
+  # leaving LoRA params (which QWIX creates without sharding annotations) on
+  # device [0] only and causing a device-mismatch error at training time.
+  # Force the reshard unconditionally instead.
   if mesh is not None:
-    lora_model = reshard_lib.reshard_model_to_mesh(lora_model, mesh)
+    with mesh:
+      graph_def, state = nnx.split(lora_model)
+      default_memory_kind = jax.devices()[0].default_memory().kind
+      dst_shardings = jax.tree_util.tree_map(
+          lambda x: jax.sharding.NamedSharding(
+              mesh, x, memory_kind=default_memory_kind
+          ),
+          nnx.get_partition_spec(state),
+      )
+      lora_model = nnx.merge(
+          graph_def, reshard_lib.reshard_pytree(state, dst_shardings)
+      )
   return lora_model
 
 
